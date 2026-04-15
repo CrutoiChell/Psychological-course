@@ -1,0 +1,137 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  padding: 7rem 2rem 4rem;
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.pageHeader {
+  margin-bottom: 3rem;
+  animation: slideUp 0.6s ease-out;
+
+  h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--text-heading);
+    margin-bottom: 0.75rem;
+  }
+
+  p {
+    font-size: 1.125rem;
+    color: var(--text-accent);
+  }
+}
+
+.testsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.testCard {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 2rem;
+  background: var(--bg-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 1.5rem;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  animation: slideUp 0.6s ease-out both;
+
+  &:nth-child(1) { animation-delay: 0.1s; }
+  &:nth-child(2) { animation-delay: 0.2s; }
+  &:nth-child(3) { animation-delay: 0.3s; }
+
+  &:hover {
+    transform: translateY(-4px);
+    border-color: var(--accent-color);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+
+    .testArrow {
+      transform: translateX(4px);
+      color: var(--accent-color);
+    }
+  }
+}
+
+.testIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  background: rgba(167, 139, 250, 0.1);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  border-radius: 1rem;
+  color: var(--accent-color);
+  flex-shrink: 0;
+}
+
+.testInfo {
+  flex: 1;
+
+  h2 {
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: var(--text-heading);
+    margin-bottom: 0.5rem;
+  }
+
+  p {
+    color: var(--text-accent);
+    font-size: 0.9375rem;
+    margin-bottom: 0.75rem;
+  }
+}
+
+.testMeta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.questionCount {
+  font-size: 0.8125rem;
+  color: var(--text-accent);
+  padding: 0.25rem 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2rem;
+}
+
+.scoreBadge {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #4ade80;
+  padding: 0.25rem 0.75rem;
+  background: rgba(74, 222, 128, 0.1);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  border-radius: 2rem;
+}
+
+.testArrow {
+  color: var(--text-accent);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+  .page { padding: 6rem 1rem 3rem; }
+  .pageHeader h1 { font-size: 1.75rem; }
+  .testCard { flex-direction: column; align-items: flex-start; gap: 1rem; }
+  .testArrow { align-self: flex-end; }
+}

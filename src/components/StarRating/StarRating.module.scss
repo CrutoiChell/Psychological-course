@@ -1,0 +1,44 @@
+.stars {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin: 1.5rem 0;
+}
+
+.star {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  color: rgba(255, 255, 255, 0.2);
+  transition: transform 0.2s ease, color 0.2s ease;
+  line-height: 0;
+
+  &:hover:not(:disabled) {
+    transform: scale(1.2) translateY(-4px);
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
+.active {
+  color: #f59e0b;
+  animation: starPop 0.3s ease;
+}
+
+.selected {
+  animation: starFloat 2s ease-in-out infinite;
+}
+
+@keyframes starPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.4) translateY(-6px); }
+  100% { transform: scale(1); }
+}
+
+@keyframes starFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}

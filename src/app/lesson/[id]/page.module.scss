@@ -1,0 +1,479 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  padding: 7rem 2rem 4rem;
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  font-size: 0.9375rem;
+  color: var(--text-accent);
+  animation: slideUp 0.4s ease-out;
+
+  a {
+    color: var(--accent-color);
+    text-decoration: none;
+    transition: opacity 0.2s;
+
+    &:hover { opacity: 0.8; }
+  }
+}
+
+.lessonCard {
+  background: var(--bg-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 1.5rem;
+  overflow: hidden;
+  animation: slideUp 0.6s ease-out 0.1s both;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.lessonHeader {
+  padding: 2.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--text-heading);
+    line-height: 1.2;
+  }
+}
+
+.lessonMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.moduleTag {
+  padding: 0.375rem 0.875rem;
+  background: rgba(167, 139, 250, 0.1);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-radius: 2rem;
+  color: var(--accent-color);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.completedTag {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.875rem;
+  background: rgba(74, 222, 128, 0.1);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  border-radius: 2rem;
+  color: #4ade80;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.videoContainer {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%;
+  background: #000;
+
+  iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.lessonImage {
+  width: 100%;
+  max-height: 400px;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+.lessonContent {
+  padding: 2.5rem;
+  color: var(--text-primary);
+  line-height: 1.9;
+  font-size: 1.0625rem;
+
+  p {
+    margin-bottom: 1.25rem;
+
+    &:last-child { margin-bottom: 0; }
+  }
+}
+
+.successBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 0 2.5rem;
+  padding: 1.25rem 1.5rem;
+  background: rgba(74, 222, 128, 0.1);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  border-radius: 1rem;
+  color: #4ade80;
+  font-weight: 600;
+  font-size: 1rem;
+  animation: slideUp 0.4s ease-out;
+}
+
+.lessonFooter {
+  padding: 2rem 2.5rem;
+  background: rgba(0, 0, 0, 0.15);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.navigation {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.navBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--bg-primary);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.875rem;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+  }
+}
+
+.btnComplete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  padding: 1.125rem;
+  background: linear-gradient(135deg, #a78bfa 0%, #ec4899 100%);
+  color: white;
+  border: none;
+  border-radius: 1rem;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 30px rgba(167, 139, 250, 0.3);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(167, 139, 250, 0.4);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+}
+
+.spinIcon {
+  animation: spin 0.8s linear infinite;
+}
+
+.btnNext {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  padding: 1.125rem;
+  background: linear-gradient(135deg, #4ade80 0%, #22d3ee 100%);
+  color: white;
+  border-radius: 1rem;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 30px rgba(74, 222, 128, 0.3);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(74, 222, 128, 0.4);
+  }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .page { padding: 6rem 1rem 3rem; }
+  .lessonHeader { padding: 1.5rem; h1 { font-size: 1.5rem; } }
+  .lessonContent { padding: 1.5rem; }
+  .lessonFooter { padding: 1.5rem; }
+  .navBtn { max-width: 48%; font-size: 0.8125rem; }
+}
+
+/* Modal */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.modal {
+  background: var(--bg-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.5rem;
+  padding: 3rem 2.5rem;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  position: relative;
+  animation: modalIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+
+  h2 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--text-heading);
+    margin-bottom: 0.75rem;
+  }
+
+  p {
+    color: var(--text-primary);
+    font-size: 1rem;
+    margin-bottom: 0;
+  }
+}
+
+.modalClose {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  border-radius: 0.5rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-accent);
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--text-heading);
+  }
+}
+
+.modalIcon {
+  width: 5rem;
+  height: 5rem;
+  background: rgba(74, 222, 128, 0.1);
+  border: 2px solid rgba(74, 222, 128, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4ade80;
+  margin: 0 auto 1.5rem;
+  animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modalThanks {
+  font-size: 0.9375rem;
+  color: #4ade80;
+  font-weight: 600;
+  margin-top: -0.5rem;
+  margin-bottom: 1rem;
+}
+
+.modalActions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  margin-top: 1.5rem;
+}
+
+.modalBtnPrimary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #a78bfa 0%, #ec4899 100%);
+  color: white;
+  border-radius: 1rem;
+  font-weight: 700;
+  font-size: 1rem;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 20px rgba(167, 139, 250, 0.3);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(167, 139, 250, 0.4);
+  }
+}
+
+.modalBtnSecondary {
+  padding: 0.875rem;
+  background: transparent;
+  color: var(--text-accent);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.8) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
+/* Mobile fixed bottom bar */
+.mobileBar {
+  display: none;
+  position: fixed;
+  bottom: 72px; /* выше BottomNav */
+  left: 0;
+  right: 0;
+  z-index: 500;
+  background: var(--header-bg-scrolled);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--header-border);
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.mobileBarPrev,
+.mobileBarNext {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.875rem;
+  color: var(--text-primary);
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+  }
+}
+
+.mobileBarComplete {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem;
+  background: linear-gradient(135deg, #a78bfa 0%, #ec4899 100%);
+  color: white;
+  border: none;
+  border-radius: 0.875rem;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(167, 139, 250, 0.3);
+
+  &:disabled { opacity: 0.7; cursor: not-allowed; }
+}
+
+.mobileBarNext {
+  text-decoration: none;
+}
+
+@media (max-width: 768px) {
+  .mobileBar {
+    display: flex;
+  }
+
+  /* Скрываем десктопный footer урока на мобильных */
+  .lessonFooter {
+    display: none;
+  }
+
+  .page {
+    padding: 5rem 1rem 1rem;
+  }
+
+  .lessonHeader {
+    padding: 1.25rem;
+
+    h1 { font-size: 1.375rem; }
+  }
+
+  .lessonContent {
+    padding: 1.25rem;
+    font-size: 1rem;
+  }
+
+  .breadcrumb {
+    font-size: 0.8125rem;
+  }
+}
