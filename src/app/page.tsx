@@ -3,7 +3,11 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { gsap } from 'gsap';
-import { Users, BookOpen, Star, GraduationCap, Target, BarChart2, Award, Clock, Lightbulb, TrendingUp, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
+import { 
+  Users, BookOpen, Star, GraduationCap, Target, 
+  BarChart2, Award, Clock, Lightbulb, TrendingUp, 
+  ChevronLeft, ChevronRight, ArrowRight 
+} from 'lucide-react';
 import { slides } from '@/data/slides';
 import { createClient } from '@/lib/supabase/client';
 import Header from '@/components/Header/Header';
@@ -20,44 +24,63 @@ interface Stats {
 
 export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [stats, setStats] = useState<Stats>({ students: 0, certificates: 0, satisfaction: 98, modules: 3 });
+  const [stats, setStats] = useState<Stats>({ 
+    students: 0, 
+    certificates: 0, 
+    satisfaction: 98, 
+    modules: 3 
+  });
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
   const countersAnimated = useRef(false);
 
+  // Инициализация данных
   useEffect(() => {
-    loadStats();
+    const supabase = createClient();
+    
+    // Загружаем статистику
+    loadStats(supabase);
+
+    // Проверяем сессию
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsLoggedIn(!!session?.user);
+    });
   }, []);
 
-  const loadStats = async () => {
+  const loadStats = async (supabase: any) => {
     try {
-      const supabase = createClient();
-      const [{ count: certificates }, { data: ratingsData }, { data: progressData }] = await Promise.all([
+      // Выполняем все запросы параллельно для скорости
+      const [
+        { count: certificatesCount },
+        { data: ratingsData },
+        { data: profilesCount },
+      ] = await Promise.all([
         supabase.from('test_results').select('*', { count: 'exact', head: true }),
         supabase.from('ratings').select('rating'),
-        supabase.from('user_progress').select('user_id'),
+        supabase.rpc('get_profiles_count'), // Вызов вашей функции
       ]);
 
-      // Уникальные пользователи из user_progress
-      const uniqueUsers = new Set(progressData?.map((p: any) => p.user_id) ?? []).size;
-
+      // Расчет среднего рейтинга
       let avgRating = 98;
       if (ratingsData && ratingsData.length > 0) {
         const sum = ratingsData.reduce((acc: number, r: any) => acc + r.rating, 0);
         avgRating = Math.round((sum / ratingsData.length / 5) * 100);
       }
 
-      setStats(prev => ({
-        ...prev,
-        students: uniqueUsers,
-        certificates: Math.max(certificates || 0, 0),
+      // Обновляем состояние — это спровоцирует перерендер и запуск анимации
+      setStats({
+        students: profilesCount || 0,
+        certificates: certificatesCount || 0,
         satisfaction: avgRating,
-      }));
-    } catch {
-      // fallback
+        modules: 3,
+      });
+    } catch (error) {
+      console.error('Error loading stats:', error);
     }
   };
 
+  // Анимация текста при смене слайда
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', slides[currentIndex].theme);
     if (heroRef.current) {
@@ -69,26 +92,33 @@ export default function Home() {
     }
   }, [currentIndex]);
 
+  // Наблюдатель за секцией статистики для запуска анимации цифр
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach(e => {
-          if (e.isIntersecting && !countersAnimated.current) {
+          if (e.isIntersecting && !countersAnimated.current && stats.students > 0) {
             countersAnimated.current = true;
             animateCounters();
           }
         });
       },
-      { threshold: 0.5 }
+      { threshold: 0.2 }
     );
+    
     if (statsRef.current) observer.observe(statsRef.current);
     return () => observer.disconnect();
-  }, [stats]);
+  }, [stats]); // Зависимость от stats важна, чтобы знать, когда данные пришли
 
   const animateCounters = () => {
     document.querySelectorAll('.counter').forEach((counter) => {
       const target = parseInt(counter.getAttribute('data-target') || '0');
-      gsap.to(counter, { innerHTML: target, duration: 2, ease: 'power2.out', snap: { innerHTML: 1 } });
+      gsap.to(counter, { 
+        innerHTML: target, 
+        duration: 2, 
+        ease: 'power2.out', 
+        snap: { innerHTML: 1 } 
+      });
     });
   };
 
@@ -101,7 +131,7 @@ export default function Home() {
       <Header />
       <main className={styles.main}>
 
-        {/* Hero */}
+        {/* Hero Section */}
         <section className={styles.hero} ref={heroRef}>
           <div className={styles.heroBackground} style={{ backgroundImage: `url(${slides[currentIndex].image})` }}>
             <div className={styles.heroOverlay} />
@@ -119,8 +149,8 @@ export default function Home() {
             <p className="animate-in">{slides[currentIndex].description}</p>
 
             <div className={`${styles.ctaButtons} animate-in`}>
-              <Link href="/sign_up" className={styles.btnLarge}>
-                <span>Начать обучение</span>
+              <Link href={isLoggedIn ? '/dashboard' : '/sign_up'} className={styles.btnLarge}>
+                <span>{isLoggedIn ? 'Перейти к курсу' : 'Начать обучение'}</span>
                 <ArrowRight size={22} className={styles.btnIcon} />
               </Link>
               <Link href="/course" className={styles.btnOutline}>
@@ -134,9 +164,12 @@ export default function Home() {
               </button>
               <div className={styles.sliderDots}>
                 {slides.map((_, i) => (
-                  <button key={i} onClick={() => goToSlide(i)}
+                  <button 
+                    key={i} 
+                    onClick={() => goToSlide(i)}
                     className={`${styles.dot} ${i === currentIndex ? styles.active : ''}`}
-                    aria-label={`Слайд ${i + 1}`} />
+                    aria-label={`Слайд ${i + 1}`} 
+                  />
                 ))}
               </div>
               <button onClick={nextSlide} className={styles.sliderBtn} aria-label="Следующий слайд">
@@ -149,14 +182,9 @@ export default function Home() {
             <div className={styles.mouse}><div className={styles.wheel} /></div>
             <span className={styles.scrollLabel}>Скролл</span>
           </div>
-
-          <div className={styles.swipeIndicator}>
-            <div className={styles.swipePhone} />
-            <span className={styles.swipeLabel}>Свайп</span>
-          </div>
         </section>
 
-        {/* Stats */}
+        {/* Stats Section */}
         <section className={styles.stats} ref={statsRef}>
           <div className={styles.container}>
             <div className={styles.statsGrid}>
@@ -178,7 +206,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Features */}
+        {/* Features Section */}
         <section className={styles.features}>
           <div className={styles.container}>
             <div className={styles.sectionHeader}>
@@ -204,14 +232,14 @@ export default function Home() {
           </div>
         </section>
 
-        {/* CTA */}
+        {/* CTA Section */}
         <section className={styles.cta}>
           <div className={styles.container}>
             <div className={styles.ctaCard}>
               <h2>Готовы начать путь к восстановлению?</h2>
-              <p>Присоединяйтесь к 1200+ участникам, которые уже изменили свою жизнь</p>
-              <Link href="/sign_up" className={styles.ctaButton}>
-                Начать бесплатно
+              <p>Присоединяйтесь к {stats.students > 0 ? stats.students : '1200'}+ участникам, которые уже изменили свою жизнь</p>
+              <Link href={isLoggedIn ? '/dashboard' : '/sign_up'} className={styles.ctaButton}>
+                {isLoggedIn ? 'Перейти в кабинет' : 'Начать бесплатно'}
               </Link>
             </div>
           </div>

@@ -134,6 +134,56 @@ npm run dev
 
 Открой http://localhost:3000
 
+## Таблицы для контента (уроки, тесты, советы)
+
+```sql
+-- Уроки
+CREATE TABLE IF NOT EXISTS lessons_content (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  module TEXT NOT NULL,
+  module_number INTEGER NOT NULL,
+  content TEXT NOT NULL,
+  image TEXT,
+  video_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE lessons_content ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read lessons" ON lessons_content FOR SELECT USING (true);
+CREATE POLICY "Admin write lessons" ON lessons_content FOR ALL USING (true);
+
+-- Тесты
+CREATE TABLE IF NOT EXISTS tests_content (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  icon TEXT,
+  show_percent BOOLEAN DEFAULT true,
+  questions JSONB NOT NULL DEFAULT '[]',
+  results JSONB NOT NULL DEFAULT '[]',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE tests_content ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read tests" ON tests_content FOR SELECT USING (true);
+CREATE POLICY "Admin write tests" ON tests_content FOR ALL USING (true);
+
+-- Советы дня
+CREATE TABLE IF NOT EXISTS tips_content (
+  id TEXT PRIMARY KEY,
+  category TEXT NOT NULL,
+  icon TEXT,
+  title TEXT NOT NULL,
+  text TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE tips_content ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read tips" ON tips_content FOR SELECT USING (true);
+CREATE POLICY "Admin write tips" ON tips_content FOR ALL USING (true);
+```
+
 ## Настройка email уведомлений (Resend)
 
 1. Зарегистрируйся на https://resend.com

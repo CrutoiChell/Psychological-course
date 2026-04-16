@@ -28,7 +28,8 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
 
   const checkAuthAndProgress = async () => {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user ?? null;
     if (!user) { router.push('/sign_in'); return; }
 
     const { data } = await supabase

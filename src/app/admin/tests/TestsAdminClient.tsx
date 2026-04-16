@@ -39,8 +39,8 @@ export default function TestsAdminClient({ initialTests }: { initialTests: Test[
       await saveTests(updated);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } catch {
-      alert('Ошибка сохранения');
+    } catch (e: any) {
+      alert(`Ошибка: ${e.message}\n\nСоздайте таблицу tests_content в Supabase (см. SUPABASE_SETUP.md)`);
     } finally {
       setSaving(false);
     }

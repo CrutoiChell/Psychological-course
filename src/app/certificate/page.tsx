@@ -82,7 +82,8 @@ export default function CertificatePage() {
 
   const checkAuth = async () => {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user ?? null;
     if (!user) { router.push('/sign_in'); return; }
     setUserName(user.user_metadata?.name || user.email?.split('@')[0] || 'Участник курса');
 
@@ -99,19 +100,20 @@ export default function CertificatePage() {
 
   const handleDownload = async () => {
     if (!certRef.current || !canGet) return;
-    const html2canvas = (await import('html2canvas')).default;
 
-    // Сбрасываем zoom перед рендером
+    // Рендерим через html2canvas → получаем PNG → вставляем в PDF
+    const html2canvas = (await import('html2canvas')).default;
+    const { jsPDF } = await import('jspdf');
+
+    // Сбрасываем zoom
     certRef.current.style.zoom = '1';
 
     const canvas = await html2canvas(certRef.current, {
-      scale: 2,
+      scale: 3,
       useCORS: true,
       backgroundColor: theme.bg,
       width: CERT_W,
       height: CERT_H,
-      windowWidth: CERT_W,
-      windowHeight: CERT_H,
     });
 
     // Восстанавливаем zoom
@@ -120,10 +122,11 @@ export default function CertificatePage() {
       certRef.current.style.zoom = String(s);
     }
 
-    const link = document.createElement('a');
-    link.download = `Сертификат_${userName}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+    const imgData = canvas.toDataURL('image/png');
+    // A4 landscape: 297 x 210 mm
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    pdf.addImage(imgData, 'PNG', 0, 0, 297, 210);
+    pdf.save(`Сертификат_${userName}.pdf`);
   };
 
   if (loading) return null;
@@ -236,7 +239,7 @@ export default function CertificatePage() {
                 </div>
 
                 <button onClick={handleDownload} className={styles.btnDownload}>
-                  <Download size={20} /> Скачать сертификат
+                  <Download size={20} /> Скачать PDF
                 </button>
               </>
             )}

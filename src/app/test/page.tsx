@@ -29,18 +29,23 @@ export default function TestsPage() {
 
   const checkAuth = async () => {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push('/sign_in'); return; }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) { router.push('/sign_in'); return; }
 
-    const { data } = await supabase
-      .from('test_results')
-      .select('test_type, score')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    try {
+      const { data } = await supabase
+        .from('test_results')
+        .select('test_type, score')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false });
 
-    const results: Record<string, number> = {};
-    data?.forEach(r => { if (!(r.test_type in results)) results[r.test_type] = r.score; });
-    setCompletedTests(results);
+      const results: Record<string, number> = {};
+      data?.forEach(r => { if (!(r.test_type in results)) results[r.test_type] = r.score; });
+      setCompletedTests(results);
+    } catch {
+      // таблица может не существовать — не блокируем страницу
+    }
+
     setLoading(false);
   };
 

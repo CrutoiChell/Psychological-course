@@ -45,9 +45,9 @@ export default function Footer() {
         <div className={styles.bottom}>
           <p>&copy; 2026 Психология кризиса. Все права защищены.</p>
           <div className={styles.social}>
-            <a href="#" aria-label="Telegram"><Send size={18} /></a>
-            <a href="#" aria-label="RSS"><Rss size={18} /></a>
-            <a href="#" aria-label="Website"><Globe size={18} /></a>
+            <a href="https://t.me/" target="_blank" rel="noopener noreferrer" aria-label="Telegram"><Send size={18} /></a>
+            <a href="https://vk.com/" target="_blank" rel="noopener noreferrer" aria-label="VK"><Globe size={18} /></a>
+            <a href="mailto:support@example.com" aria-label="Email"><Rss size={18} /></a>
           </div>
         </div>
       </div>

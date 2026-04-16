@@ -37,7 +37,8 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
 
   const checkAuth = async () => {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user ?? null;
     if (!user) { router.push('/sign_in'); return; }
     setLoading(false);
   };
