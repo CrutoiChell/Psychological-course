@@ -1,8 +1,9 @@
 import TipsClient from './TipsClient';
-import { tips } from '@/data/tips';
+import { getTips } from '@/app/actions/admin';
 import styles from '../page.module.scss';
 
-export default function TipsPage() {
+export default async function TipsPage() {
+  const tips = await getTips();
   return (
     <div className={styles.page}>
       <div className={styles.header}>

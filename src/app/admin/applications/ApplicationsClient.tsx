@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { updateApplicationStatus } from '@/app/actions/admin';
-import { CheckCircle, Clock, Mail, Phone, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, useTransition } from 'react';
+import { updateApplicationStatus, deleteApplication } from '@/app/actions/admin';
+import { CheckCircle, Clock, Mail, Phone, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import styles from './applications.module.scss';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -15,14 +15,33 @@ const TYPE_LABELS: Record<string, string> = {
 export default function ApplicationsClient({ applications: initial }: { applications: any[] }) {
   const [apps, setApps] = useState(initial);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+  const [busy, setBusy] = useState<string | null>(null);
 
   const toggleStatus = async (id: string, current: string) => {
     const next = current === 'done' ? 'new' : 'done';
+    setBusy(id);
     try {
       await updateApplicationStatus(id, next);
       setApps(prev => prev.map(a => a.id === id ? { ...a, status: next } : a));
-    } catch {
-      alert('Ошибка обновления статуса');
+    } catch (e: any) {
+      alert(`Ошибка обновления статуса: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Удалить заявку? Это действие необратимо.')) return;
+    setBusy(id);
+    try {
+      await deleteApplication(id);
+      setApps(prev => prev.filter(a => a.id !== id));
+      if (expanded === id) setExpanded(null);
+    } catch (e: any) {
+      alert(`Ошибка удаления: ${e.message}`);
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -54,12 +73,23 @@ export default function ApplicationsClient({ applications: initial }: { applicat
           {expanded === app.id && (
             <div className={styles.cardBody}>
               <p className={styles.message}>{app.message}</p>
-              <button
-                className={`${styles.btnStatus} ${app.status === 'done' ? styles.btnUndo : styles.btnDone}`}
-                onClick={() => toggleStatus(app.id, app.status ?? 'new')}
-              >
-                {app.status === 'done' ? 'Вернуть в новые' : 'Отметить обработанной'}
-              </button>
+              <div className={styles.cardActions}>
+                <button
+                  className={`${styles.btnStatus} ${app.status === 'done' ? styles.btnUndo : styles.btnDone}`}
+                  onClick={() => toggleStatus(app.id, app.status ?? 'new')}
+                  disabled={busy === app.id}
+                >
+                  {busy === app.id ? 'Подождите...' : (app.status === 'done' ? 'Вернуть в новые' : 'Отметить обработанной')}
+                </button>
+                <button
+                  className={styles.btnDelete}
+                  onClick={() => handleDelete(app.id)}
+                  disabled={busy === app.id}
+                  title="Удалить заявку"
+                >
+                  <Trash2 size={14} /> Удалить
+                </button>
+              </div>
             </div>
           )}
         </div>

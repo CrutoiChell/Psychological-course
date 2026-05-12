@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import Link from 'next/link';
 import { Users, ClipboardList, BookOpen, BarChart2, TrendingUp, Star } from 'lucide-react';
 import styles from './page.module.scss';
 
@@ -69,7 +70,7 @@ export default async function AdminPage() {
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <h2>Последние заявки</h2>
-          <a href="/admin/applications" className={styles.sectionLink}>Все заявки →</a>
+          <Link href="/admin/applications" className={styles.sectionLink}>Все заявки →</Link>
         </div>
         <div className={styles.table}>
           <div className={styles.tableHead}>
