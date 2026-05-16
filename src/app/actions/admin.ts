@@ -113,24 +113,26 @@ function mapTestRow(r: any) {
   };
 }
 
-/** Для публичных страниц: fallback на статику только если таблица недоступна */
+/** Для публичных страниц: анонимный клиент + fallback на статику при любой ошибке */
 export async function getLessons() {
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from('lessons_content')
-    .select('*')
-    .order('module_number', { ascending: true })
-    .order('id', { ascending: true });
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('lessons_content')
+      .select('*')
+      .order('module_number', { ascending: true })
+      .order('id', { ascending: true });
 
-  if (error) {
+    if (error || !data?.length) {
+      const { lessons } = await import('@/data/lessons');
+      return lessons;
+    }
+    return data.map(mapLessonRow);
+  } catch (e) {
+    console.error('[getLessons] fallback to static:', e);
     const { lessons } = await import('@/data/lessons');
     return lessons;
   }
-  if (!data?.length) {
-    const { lessons } = await import('@/data/lessons');
-    return lessons;
-  }
-  return data.map(mapLessonRow);
 }
 
 /** Для админки: только данные из БД, без подстановки статики */
@@ -207,21 +209,23 @@ export async function saveTests(tests: any[]) {
 }
 
 export async function getTests() {
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from('tests_content')
-    .select('*')
-    .order('created_at', { ascending: true });
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('tests_content')
+      .select('*')
+      .order('created_at', { ascending: true });
 
-  if (error) {
+    if (error || !data?.length) {
+      const { tests } = await import('@/data/tests');
+      return tests;
+    }
+    return data.map(mapTestRow);
+  } catch (e) {
+    console.error('[getTests] fallback to static:', e);
     const { tests } = await import('@/data/tests');
     return tests;
   }
-  if (!data?.length) {
-    const { tests } = await import('@/data/tests');
-    return tests;
-  }
-  return data.map(mapTestRow);
 }
 
 export async function getTestsForAdmin() {
@@ -294,21 +298,23 @@ export async function saveTips(tips: any[]) {
 }
 
 export async function getTips() {
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from('tips_content')
-    .select('*')
-    .order('created_at', { ascending: true });
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('tips_content')
+      .select('*')
+      .order('created_at', { ascending: true });
 
-  if (error) {
+    if (error || !data?.length) {
+      const { tips } = await import('@/data/tips');
+      return tips;
+    }
+    return data as any[];
+  } catch (e) {
+    console.error('[getTips] fallback to static:', e);
     const { tips } = await import('@/data/tips');
     return tips;
   }
-  if (!data?.length) {
-    const { tips } = await import('@/data/tips');
-    return tips;
-  }
-  return data as any[];
 }
 
 export async function getTipsForAdmin() {
