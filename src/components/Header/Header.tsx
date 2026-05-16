@@ -14,8 +14,8 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    // Используем getSession вместо getUser — не требует сетевого запроса и не конкурирует за lock
     const supabase = createClient();
+    if (!supabase) return;
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -49,6 +49,7 @@ export default function Header() {
 
   const handleSignOut = async () => {
     const supabase = createClient();
+    if (!supabase) return;
     await supabase.auth.signOut();
     window.location.href = '/';
   };

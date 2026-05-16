@@ -37,20 +37,23 @@ export default function TestClient({ test }: { test: Test }) {
       setResult(testResult);
 
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from('test_results').insert({
-          user_id: user.id,
-          test_type: test.id,
-          score: testResult.percentage,
-          result_text: testResult.level,
-        });
+      if (supabase) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from('test_results').insert({
+            user_id: user.id,
+            test_type: test.id,
+            score: testResult.percentage,
+            result_text: testResult.level,
+          });
+        }
       }
     }
   };
 
   const handleRate = async (stars: number) => {
     const supabase = createClient();
+    if (!supabase) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase.from('ratings').upsert({

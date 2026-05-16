@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, SUPABASE_ENV_ERROR } from '@/lib/supabase/client';
 import Header from '@/components/Header/Header';
 import styles from './page.module.scss';
 
@@ -22,6 +22,7 @@ export default function SignIn() {
 
     try {
       const supabase = createClient();
+      if (!supabase) throw new Error(SUPABASE_ENV_ERROR);
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,

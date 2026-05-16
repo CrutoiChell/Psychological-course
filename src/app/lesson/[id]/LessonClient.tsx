@@ -33,6 +33,7 @@ export default function LessonClient({ lesson, prevLesson, nextLesson }: Props) 
 
   const checkAuthAndProgress = async () => {
     const supabase = createClient();
+    if (!supabase) { router.push('/sign_in'); return; }
     const { data: { session } } = await supabase.auth.getSession();
     const user = session?.user ?? null;
     if (!user) { router.push('/sign_in'); return; }
@@ -77,6 +78,7 @@ export default function LessonClient({ lesson, prevLesson, nextLesson }: Props) 
 
   const handleRate = async (stars: number) => {
     const supabase = createClient();
+    if (!supabase) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase.from('ratings').upsert({

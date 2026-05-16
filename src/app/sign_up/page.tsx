@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { UserPlus, AlertCircle } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, SUPABASE_ENV_ERROR } from '@/lib/supabase/client';
 import Header from '@/components/Header/Header';
 import styles from './page.module.scss';
 
@@ -19,6 +19,7 @@ export default function SignUp() {
 
   useEffect(() => {
     const supabase = createClient();
+    if (!supabase) return;
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) router.replace('/dashboard');
     });
@@ -40,6 +41,7 @@ export default function SignUp() {
     setLoading(true);
     try {
       const supabase = createClient();
+      if (!supabase) throw new Error(SUPABASE_ENV_ERROR);
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,

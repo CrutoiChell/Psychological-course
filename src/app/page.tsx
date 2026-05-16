@@ -38,8 +38,8 @@ export default function Home() {
   // Инициализация данных
   useEffect(() => {
     const supabase = createClient();
-    
-    // Загружаем статистику
+    if (!supabase) return;
+
     loadStats(supabase);
 
     // Проверяем сессию
