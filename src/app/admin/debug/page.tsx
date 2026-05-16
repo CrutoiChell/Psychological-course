@@ -21,8 +21,8 @@ async function getDiagnostics() {
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'OK' : 'MISSING',
     ADMIN_EMAIL: process.env.ADMIN_EMAIL ?? '(не задан)',
     NEXT_PUBLIC_ADMIN_EMAIL: process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? '(не задан)',
-    ADMIN_NOTIFY_EMAIL_raw: process.env.ADMIN_NOTIFY_EMAIL ?? '(не задан)',
-    notify_recipients_resolved: getAdminNotifyRecipients(),
+    notify_email_hardcoded: getAdminNotifyRecipients(),
+    ADMIN_NOTIFY_EMAIL_env: process.env.ADMIN_NOTIFY_EMAIL ?? '(игнорируется, см. notify-email.ts)',
     RESEND_API_KEY: process.env.RESEND_API_KEY ? 'OK' : 'MISSING',
   };
 

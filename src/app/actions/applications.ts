@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { isValidPhone, PHONE_VALIDATION_ERROR } from '@/lib/phone';
-import { getAdminNotifyRecipients } from '@/lib/notify-email';
+import { APPLICATION_NOTIFY_EMAIL, getAdminNotifyRecipients } from '@/lib/notify-email';
 import { escapeHtml } from '@/lib/escape-html';
 
 export interface ApplicationData {
@@ -44,14 +44,17 @@ export async function submitApplication(data: ApplicationData) {
     throw new Error(`Ошибка при сохранении заявки: ${error.message}`);
   }
 
-  if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== 'your_resend_api_key_here') {
+  const resendKey = process.env.RESEND_API_KEY?.trim();
+  if (resendKey && resendKey !== 'your_resend_api_key_here') {
     const recipients = getAdminNotifyRecipients();
-    const from = process.env.RESEND_FROM_EMAIL?.trim() || 'onboarding@resend.dev';
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() || '';
+    const from = 'onboarding@resend.dev';
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+      'https://psychological-course.vercel.app';
 
     try {
       const { Resend } = await import('resend');
-      const resend = new Resend(process.env.RESEND_API_KEY);
+      const resend = new Resend(resendKey);
 
       const safeName = escapeHtml(data.name);
       const safeEmail = escapeHtml(data.email);
@@ -86,7 +89,7 @@ export async function submitApplication(data: ApplicationData) {
       if (result.error) {
         console.error('[applications] Resend error:', result.error);
       } else {
-        console.log('[applications] Email sent to:', recipients.join(', '));
+        console.log('[applications] Email sent to:', APPLICATION_NOTIFY_EMAIL, result.data?.id ?? '');
       }
     } catch (emailError) {
       console.error('[applications] Email send failed:', emailError);
