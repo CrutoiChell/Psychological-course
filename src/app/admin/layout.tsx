@@ -20,10 +20,30 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (!isAdmin) redirect('/dashboard');
 
+  const missingEnv: string[] = [];
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) missingEnv.push('NEXT_PUBLIC_SUPABASE_URL');
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) missingEnv.push('SUPABASE_SERVICE_ROLE_KEY');
+
   return (
     <div className={styles.adminLayout}>
       <AdminSidebar />
       <main className={styles.adminMain}>
+        {missingEnv.length > 0 && (
+          <div style={{
+            margin: '0 0 1rem',
+            padding: '0.875rem 1rem',
+            background: 'rgba(251,191,36,0.12)',
+            border: '1px solid rgba(251,191,36,0.4)',
+            color: '#fde68a',
+            borderRadius: 10,
+            fontSize: '0.9rem',
+          }}>
+            <strong>Админка работает в ограниченном режиме.</strong>
+            <div style={{ marginTop: 6 }}>
+              Не заданы переменные окружения: <code>{missingEnv.join(', ')}</code>. Добавьте их в Vercel → Settings → Environment Variables и сделайте Redeploy.
+            </div>
+          </div>
+        )}
         {children}
       </main>
     </div>

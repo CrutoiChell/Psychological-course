@@ -4,39 +4,65 @@ import Link from 'next/link';
 import { Users, ClipboardList, BookOpen, BarChart2, TrendingUp, Star } from 'lucide-react';
 import styles from './page.module.scss';
 
+async function safe<T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> {
+  try { return await fn(); }
+  catch (e: any) { console.error(`[admin/dashboard] ${label}:`, e?.message ?? e); return fallback; }
+}
+
 export default async function AdminPage() {
   const supabase = await createClient();
-  const adminClient = createAdminClient();
+
+  const usersCount = await safe('listUsers', async () => {
+    const admin = createAdminClient();
+    const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
+    if (error) throw error;
+    return data.users?.length ?? 0;
+  }, 0);
 
   const [
-    { data: { users: authUsers } },
-    { count: applicationsCount },
-    { count: testResultsCount },
-    { count: progressCount },
-    { data: recentApps },
-    { data: ratingsData },
+    applicationsCount,
+    testResultsCount,
+    progressCount,
+    recentApps,
+    ratingsData,
   ] = await Promise.all([
-    adminClient.auth.admin.listUsers({ perPage: 1000 }),
-    supabase.from('applications').select('*', { count: 'exact', head: true }),
-    supabase.from('test_results').select('*', { count: 'exact', head: true }),
-    supabase.from('user_progress').select('*', { count: 'exact', head: true }),
-    supabase.from('applications').select('name, email, type, created_at, status').order('created_at', { ascending: false }).limit(5),
-    supabase.from('ratings').select('rating'),
+    safe('applicationsCount', async () => {
+      const { count } = await supabase.from('applications').select('*', { count: 'exact', head: true });
+      return count ?? 0;
+    }, 0),
+    safe('testResultsCount', async () => {
+      const { count } = await supabase.from('test_results').select('*', { count: 'exact', head: true });
+      return count ?? 0;
+    }, 0),
+    safe('progressCount', async () => {
+      const { count } = await supabase.from('user_progress').select('*', { count: 'exact', head: true });
+      return count ?? 0;
+    }, 0),
+    safe<any[]>('recentApps', async () => {
+      const { data } = await supabase
+        .from('applications')
+        .select('name, email, type, created_at, status')
+        .order('created_at', { ascending: false })
+        .limit(5);
+      return data ?? [];
+    }, []),
+    safe<{ rating: number }[]>('ratings', async () => {
+      const { data } = await supabase.from('ratings').select('rating');
+      return data ?? [];
+    }, []),
   ]);
 
-  const usersCount = authUsers?.length ?? 0;
-
-  const avgRating = ratingsData?.length
+  const avgRating = ratingsData.length
     ? (ratingsData.reduce((s, r) => s + r.rating, 0) / ratingsData.length).toFixed(1)
     : '—';
 
   const stats = [
-    { icon: Users, label: 'Пользователей', value: usersCount ?? 0, color: '#a78bfa' },
-    { icon: ClipboardList, label: 'Заявок', value: applicationsCount ?? 0, color: '#ec4899' },
-    { icon: BarChart2, label: 'Тестов пройдено', value: testResultsCount ?? 0, color: '#fb923c' },
-    { icon: BookOpen, label: 'Уроков пройдено', value: progressCount ?? 0, color: '#4ade80' },
+    { icon: Users, label: 'Пользователей', value: usersCount, color: '#a78bfa' },
+    { icon: ClipboardList, label: 'Заявок', value: applicationsCount, color: '#ec4899' },
+    { icon: BarChart2, label: 'Тестов пройдено', value: testResultsCount, color: '#fb923c' },
+    { icon: BookOpen, label: 'Уроков пройдено', value: progressCount, color: '#4ade80' },
     { icon: Star, label: 'Средний рейтинг', value: avgRating, color: '#f59e0b', suffix: '/5' },
-    { icon: TrendingUp, label: 'Оценок оставлено', value: ratingsData?.length ?? 0, color: '#22d3ee' },
+    { icon: TrendingUp, label: 'Оценок оставлено', value: ratingsData.length, color: '#22d3ee' },
   ];
 
   const typeLabels: Record<string, string> = {
@@ -79,7 +105,7 @@ export default async function AdminPage() {
             <span>Тип</span>
             <span>Дата</span>
           </div>
-          {recentApps?.length ? recentApps.map((app, i) => (
+          {recentApps.length ? recentApps.map((app: any, i: number) => (
             <div key={i} className={styles.tableRow}>
               <span className={styles.tableName}>{app.name}</span>
               <span className={styles.tableEmail}>{app.email}</span>
