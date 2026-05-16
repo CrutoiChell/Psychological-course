@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { isValidPhone, PHONE_VALIDATION_ERROR } from '@/lib/phone';
 
 export interface ApplicationData {
   name: string;
@@ -18,13 +19,19 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export async function submitApplication(data: ApplicationData) {
+  if (!isValidPhone(data.phone ?? '')) {
+    throw new Error(PHONE_VALIDATION_ERROR);
+  }
+
   const supabase = await createClient();
+
+  const phone = data.phone?.trim() || null;
 
   // Сохраняем в БД
   const { error } = await supabase.from('applications').insert({
     name: data.name,
     email: data.email,
-    phone: data.phone || null,
+    phone,
     type: data.type,
     message: data.message,
     status: 'new',

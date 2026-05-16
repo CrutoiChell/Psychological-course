@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Send, CheckCircle, AlertCircle, User, Mail, Phone, MessageSquare, Loader2 } from 'lucide-react';
 import { submitApplication } from '@/app/actions/applications';
+import { sanitizePhoneInput, isValidPhone, PHONE_VALIDATION_ERROR } from '@/lib/phone';
 import styles from './ConsultationForm.module.scss';
 
 const TYPES = [
@@ -30,14 +31,23 @@ export default function ConsultationForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!isValidPhone(form.phone)) {
+      setError(PHONE_VALIDATION_ERROR);
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await submitApplication(form);
+      await submitApplication({
+        ...form,
+        phone: form.phone.trim() || undefined,
+      });
       setSuccess(true);
       setForm({ name: '', email: '', phone: '', type: 'consultation', message: '' });
-    } catch {
-      setError('Произошла ошибка. Попробуйте ещё раз.');
+    } catch (err: any) {
+      setError(err?.message || 'Произошла ошибка. Попробуйте ещё раз.');
     } finally {
       setLoading(false);
     }
@@ -128,10 +138,17 @@ export default function ConsultationForm() {
                   <input
                     id="cf-phone"
                     type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
                     className={styles.input}
                     placeholder="+7 (999) 000-00-00"
                     value={form.phone}
-                    onChange={e => set('phone', e.target.value)}
+                    onChange={e => set('phone', sanitizePhoneInput(e.target.value))}
+                    onPaste={e => {
+                      e.preventDefault();
+                      const text = e.clipboardData.getData('text');
+                      set('phone', sanitizePhoneInput(text));
+                    }}
                   />
                 </div>
                 <div className={styles.formGroup}>
