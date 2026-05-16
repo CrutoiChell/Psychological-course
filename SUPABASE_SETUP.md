@@ -215,17 +215,18 @@ node scripts/setup-modules-table.mjs
 
 ## Настройка email уведомлений (Resend)
 
-1. Зарегистрируйся на https://resend.com
-2. Получи API ключ в Dashboard → API Keys
-3. Добавь в `.env.local`:
+1. Зарегистрируйся на https://resend.com (лучше с того же ящика, куда хотите получать заявки).
+2. Получи API ключ в Dashboard → API Keys.
+3. Добавь в `.env.local` и в **Vercel → Environment Variables**:
    ```
    RESEND_API_KEY=re_xxxxxxxx
-   ADMIN_NOTIFY_EMAIL=твой@email.com
+   ADMIN_NOTIFY_EMAIL=alexeikir@mail.ru
+   NEXT_PUBLIC_SITE_URL=https://psychological-course.vercel.app
    ```
-4. **Важно**: Пока домен не верифицирован, письма идут ТОЛЬКО на email с которого зарегистрировался в Resend
-5. После деплоя на Vercel — добавь домен `твой-проект.vercel.app` в Resend → Domains
-6. Обнови `from` в `applications.ts` на `noreply@твой-домен.vercel.app`
+   Несколько получателей: `ADMIN_NOTIFY_EMAIL=a@mail.ru,b@mail.ru`
+
+4. **Это не из‑за Mail.ru.** Resend в тестовом режиме (`from: onboarding@resend.dev`) доставляет письма **только на email аккаунта Resend**, пока не верифицирован свой домен. Если в Resend вы залогинены как `other@mail.ru`, письма придут туда, даже если в `ADMIN_NOTIFY_EMAIL` указан `alexeikir@mail.ru`.
+5. Чтобы письма стабильно шли на `alexeikir@mail.ru`: зарегистрируй Resend с этим ящиком **или** верифицируй домен в Resend → Domains и задай `RESEND_FROM_EMAIL=noreply@ваш-домен.ru`.
 
 ### Локальная разработка
-Письма не будут приходить локально если RESEND_API_KEY не настроен.
-Заявки всё равно сохраняются в БД и видны в /admin/applications.
+Если `RESEND_API_KEY` не задан — письмо не отправляется, но заявка сохраняется в БД и видна в `/admin/applications`.

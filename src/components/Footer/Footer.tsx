@@ -61,7 +61,7 @@ export default function Footer() {
 
           <div className={styles.links}>
             <h4>Контакты</h4>
-            <a href="mailto:support@example.com">support@example.com</a>
+            <a href="mailto:alexeikir@mail.ru">alexeikir@mail.ru</a>
             <a href="tel:+1234567890">+1 (234) 567-890</a>
           </div>
         </div>
@@ -71,7 +71,7 @@ export default function Footer() {
           <div className={styles.social}>
             <a href="https://t.me/" target="_blank" rel="noopener noreferrer" aria-label="Telegram"><Send size={18} /></a>
             <a href="https://vk.com/" target="_blank" rel="noopener noreferrer" aria-label="VK"><Globe size={18} /></a>
-            <a href="mailto:support@example.com" aria-label="Email"><Rss size={18} /></a>
+            <a href="mailto:alexeikir@mail.ru" aria-label="Email"><Rss size={18} /></a>
           </div>
         </div>
       </div>

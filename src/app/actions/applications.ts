@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { isValidPhone, PHONE_VALIDATION_ERROR } from '@/lib/phone';
+import { getAdminNotifyRecipients } from '@/lib/notify-email';
+import { escapeHtml } from '@/lib/escape-html';
 
 export interface ApplicationData {
   name: string;
@@ -27,7 +29,6 @@ export async function submitApplication(data: ApplicationData) {
 
   const phone = data.phone?.trim() || null;
 
-  // Сохраняем в БД
   const { error } = await supabase.from('applications').insert({
     name: data.name,
     email: data.email,
@@ -43,39 +44,55 @@ export async function submitApplication(data: ApplicationData) {
     throw new Error(`Ошибка при сохранении заявки: ${error.message}`);
   }
 
-  // Отправляем email уведомление
   if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== 'your_resend_api_key_here') {
+    const recipients = getAdminNotifyRecipients();
+    const from = process.env.RESEND_FROM_EMAIL?.trim() || 'onboarding@resend.dev';
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() || '';
+
     try {
       const { Resend } = await import('resend');
       const resend = new Resend(process.env.RESEND_API_KEY);
 
-      await resend.emails.send({
-        from: 'onboarding@resend.dev', // замени на свой домен после верификации
-        to: process.env.ADMIN_NOTIFY_EMAIL!,
+      const safeName = escapeHtml(data.name);
+      const safeEmail = escapeHtml(data.email);
+      const safePhone = data.phone ? escapeHtml(data.phone) : '';
+      const safeMessage = escapeHtml(data.message);
+      const safeType = escapeHtml(TYPE_LABELS[data.type] ?? data.type);
+
+      const result = await resend.emails.send({
+        from,
+        to: recipients,
         subject: `Новая заявка от ${data.name} — ${TYPE_LABELS[data.type] ?? data.type}`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #a78bfa;">Новая заявка с сайта</h2>
             <table style="width: 100%; border-collapse: collapse;">
-              <tr><td style="padding: 8px 0; color: #666;">Имя:</td><td style="padding: 8px 0; font-weight: bold;">${data.name}</td></tr>
-              <tr><td style="padding: 8px 0; color: #666;">Email:</td><td style="padding: 8px 0;"><a href="mailto:${data.email}">${data.email}</a></td></tr>
-              ${data.phone ? `<tr><td style="padding: 8px 0; color: #666;">Телефон:</td><td style="padding: 8px 0;"><a href="tel:${data.phone}">${data.phone}</a></td></tr>` : ''}
-              <tr><td style="padding: 8px 0; color: #666;">Тип:</td><td style="padding: 8px 0;">${TYPE_LABELS[data.type] ?? data.type}</td></tr>
+              <tr><td style="padding: 8px 0; color: #666;">Имя:</td><td style="padding: 8px 0; font-weight: bold;">${safeName}</td></tr>
+              <tr><td style="padding: 8px 0; color: #666;">Email:</td><td style="padding: 8px 0;"><a href="mailto:${safeEmail}">${safeEmail}</a></td></tr>
+              ${safePhone ? `<tr><td style="padding: 8px 0; color: #666;">Телефон:</td><td style="padding: 8px 0;"><a href="tel:${safePhone}">${safePhone}</a></td></tr>` : ''}
+              <tr><td style="padding: 8px 0; color: #666;">Тип:</td><td style="padding: 8px 0;">${safeType}</td></tr>
             </table>
             <div style="margin-top: 16px; padding: 16px; background: #f8f9fa; border-radius: 8px;">
               <p style="color: #666; margin: 0 0 8px;">Сообщение:</p>
-              <p style="margin: 0; white-space: pre-wrap;">${data.message}</p>
+              <p style="margin: 0; white-space: pre-wrap;">${safeMessage}</p>
             </div>
-            <p style="margin-top: 24px; color: #999; font-size: 14px;">
-              Посмотреть все заявки: <a href="${process.env.NEXT_PUBLIC_SITE_URL ?? ''}/admin/applications">Админ-панель</a>
-            </p>
+            ${siteUrl ? `<p style="margin-top: 24px; color: #999; font-size: 14px;">
+              <a href="${escapeHtml(siteUrl)}/admin/applications">Открыть заявки в админке</a>
+            </p>` : ''}
           </div>
         `,
       });
+
+      if (result.error) {
+        console.error('[applications] Resend error:', result.error);
+      } else {
+        console.log('[applications] Email sent to:', recipients.join(', '));
+      }
     } catch (emailError) {
-      // Не блокируем если email не отправился
-      console.error('Email send error:', emailError);
+      console.error('[applications] Email send failed:', emailError);
     }
+  } else {
+    console.warn('[applications] RESEND_API_KEY не задан — письмо не отправлено');
   }
 
   return { success: true };
