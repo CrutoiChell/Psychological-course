@@ -1,68 +1,124 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Pencil, Trash2, Check, X } from 'lucide-react';
 import { Tip } from '@/data/tips';
-import { saveTips } from '@/app/actions/admin';
+import AdminEmptyBanner from '@/components/AdminEmptyBanner/AdminEmptyBanner';
 import styles from './tips.module.scss';
 
 const CATEGORIES = ['Восстановление', 'Сон', 'Границы', 'Энергия', 'Эмоции', 'Отношения'];
 
-export default function TipsClient({ initialTips }: { initialTips: Tip[] }) {
+async function apiJson(input: RequestInfo, init?: RequestInit) {
+  const res = await fetch(input, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
+  });
+  let body: any = null;
+  try { body = await res.json(); } catch { /* no body */ }
+  if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+  return body;
+}
+
+export default function TipsClient({ initialTips, dbEmpty }: { initialTips: Tip[]; dbEmpty?: boolean }) {
+  const router = useRouter();
   const [tips, setTips] = useState(initialTips);
   const [editId, setEditId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ category: 'Восстановление', title: '', text: '' });
-  const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
 
-  const handleSaveAll = async (updated: Tip[]) => {
-    setSaving(true);
-    try {
-      await saveTips(updated);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch {
-      alert('Ошибка сохранения');
-    } finally {
-      setSaving(false);
-    }
+  const flashOk = () => {
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   };
 
   const handleAdd = async () => {
-    if (!form.title || !form.text) return;
-    const newTip: Tip = { id: Date.now().toString(), icon: 'lightbulb', ...form };
-    const updated = [...tips, newTip];
-    setTips(updated);
-    await handleSaveAll(updated);
-    setForm({ category: 'Восстановление', title: '', text: '' });
-    setShowAdd(false);
+    if (!form.title || !form.text) { setError('Заполните заголовок и текст'); return; }
+    setBusy(true);
+    setError(null);
+    try {
+      const { tip } = await apiJson('/api/admin/tips', {
+        method: 'POST',
+        body: JSON.stringify({ ...form, icon: 'lightbulb' }),
+      });
+      setTips(p => [...p, tip]);
+      setForm({ category: 'Восстановление', title: '', text: '' });
+      setShowAdd(false);
+      flashOk();
+      router.refresh();
+    } catch (e: any) {
+      console.error('[tips] add failed', e);
+      setError(e?.message || 'Ошибка создания');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Удалить совет?')) return;
-    const updated = tips.filter(t => t.id !== id);
-    setTips(updated);
-    await handleSaveAll(updated);
+    setBusy(true);
+    setError(null);
+    try {
+      await apiJson(`/api/admin/tips/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      setTips(p => p.filter(t => t.id !== id));
+      flashOk();
+      router.refresh();
+    } catch (e: any) {
+      console.error('[tips] delete failed', e);
+      setError(e?.message || 'Ошибка удаления');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleSaveTip = async (id: string, updated: Partial<Tip>) => {
-    const newTips = tips.map(t => t.id === id ? { ...t, ...updated } : t);
-    setTips(newTips);
-    await handleSaveAll(newTips);
-    setEditId(null);
+    setBusy(true);
+    setError(null);
+    try {
+      const { tip } = await apiJson(`/api/admin/tips/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(updated),
+      });
+      setTips(p => p.map(t => t.id === id ? tip : t));
+      setEditId(null);
+      flashOk();
+      router.refresh();
+    } catch (e: any) {
+      console.error('[tips] patch failed', e);
+      setError(e?.message || 'Ошибка обновления');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <div>
+      {dbEmpty && <AdminEmptyBanner type="tips" />}
+      {error && (
+        <div style={{
+          background: 'rgba(248,113,113,0.12)',
+          border: '1px solid rgba(248,113,113,0.4)',
+          color: '#fecaca',
+          borderRadius: '0.75rem',
+          padding: '0.875rem 1rem',
+          marginBottom: '1rem',
+          fontSize: '0.9rem',
+        }}>
+          <strong>Ошибка:</strong> {error}
+          <button type="button" onClick={() => setError(null)} style={{ float: 'right', background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1 }}>×</button>
+        </div>
+      )}
       <div className={styles.toolbar}>
         <button className={styles.btnAdd} onClick={() => setShowAdd(!showAdd)}>
           <Plus size={18} /> Добавить совет
         </button>
         {saved && <span className={styles.savedMsg}><Check size={16} /> Сохранено</span>}
-        {saving && <span className={styles.savingMsg}>Сохранение...</span>}
+        {busy && <span className={styles.savingMsg}>Сохранение...</span>}
       </div>
 
       {showAdd && (
@@ -84,8 +140,8 @@ export default function TipsClient({ initialTips }: { initialTips: Tip[] }) {
             <textarea className={styles.textarea} value={form.text} onChange={e => set('text', e.target.value)} placeholder="Текст совета..." />
           </div>
           <div className={styles.formActions}>
-            <button className={styles.btnSave} onClick={handleAdd} disabled={saving}>
-              <Check size={16} /> {saving ? 'Сохранение...' : 'Сохранить'}
+            <button className={styles.btnSave} onClick={handleAdd} disabled={busy}>
+              <Check size={16} /> {busy ? 'Сохранение...' : 'Сохранить'}
             </button>
             <button className={styles.btnCancel} onClick={() => setShowAdd(false)}><X size={16} /> Отмена</button>
           </div>
@@ -94,12 +150,15 @@ export default function TipsClient({ initialTips }: { initialTips: Tip[] }) {
 
       <div className={styles.list}>
         {tips.map(tip => (
-          <TipCard key={tip.id} tip={tip} isEditing={editId === tip.id}
+          <TipCard
+            key={tip.id}
+            tip={tip}
+            isEditing={editId === tip.id}
             onEdit={() => setEditId(tip.id)}
             onDelete={() => handleDelete(tip.id)}
             onSave={(u) => handleSaveTip(tip.id, u)}
             onCancel={() => setEditId(null)}
-            saving={saving}
+            saving={busy}
           />
         ))}
       </div>
@@ -122,7 +181,7 @@ function TipCard({ tip, isEditing, onEdit, onDelete, onSave, onCancel, saving }:
           <div className={styles.formGroup}>
             <label>Категория</label>
             <select className={styles.select} value={form.category} onChange={e => set('category', e.target.value)}>
-              {['Восстановление', 'Сон', 'Границы', 'Энергия', 'Эмоции', 'Отношения'].map(c => <option key={c}>{c}</option>)}
+              {CATEGORIES.map(c => <option key={c}>{c}</option>)}
             </select>
           </div>
           <div className={styles.formGroup}>

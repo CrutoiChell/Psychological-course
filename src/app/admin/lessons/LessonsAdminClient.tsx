@@ -1,28 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Pencil, Trash2, Check, X, ChevronDown, ChevronUp, FolderPlus } from 'lucide-react';
 import { Lesson } from '@/data/lessons';
-import { saveLessons } from '@/app/actions/admin';
+import AdminEmptyBanner from '@/components/AdminEmptyBanner/AdminEmptyBanner';
 import styles from './lessons.module.scss';
 
 interface Module {
   number: number;
   title: string;
-}
-
-const DEFAULT_MODULES: Module[] = [
-  { number: 1, title: 'Модуль 1: Понимание кризиса' },
-  { number: 2, title: 'Модуль 2: Источники проблемы' },
-  { number: 3, title: 'Модуль 3: Путь к восстановлению' },
-];
-
-function nextLessonId(lessons: Lesson[]): string {
-  if (lessons.length === 0) return '1';
-  // Берём только числовые ID
-  const numericIds = lessons.map(l => parseInt(l.id)).filter(n => !isNaN(n));
-  if (numericIds.length === 0) return '1';
-  return String(Math.max(...numericIds) + 1);
 }
 
 const EMPTY_FORM = {
@@ -33,74 +20,149 @@ const EMPTY_FORM = {
   videoUrl: null as string | null,
 };
 
-export default function LessonsAdminClient({ initialLessons }: { initialLessons: Lesson[] }) {
+async function apiJson(input: RequestInfo, init?: RequestInit) {
+  const res = await fetch(input, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
+  });
+  let body: any = null;
+  try { body = await res.json(); } catch { /* no body */ }
+  if (!res.ok) {
+    const msg = body?.error || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return body;
+}
+
+export default function LessonsAdminClient({ initialLessons, dbEmpty }: { initialLessons: Lesson[]; dbEmpty?: boolean }) {
+  const router = useRouter();
   const [lessons, setLessons] = useState(initialLessons);
-  const [modules, setModules] = useState<Module[]>(DEFAULT_MODULES);
+  const [modules, setModules] = useState<Module[]>([]);
+  const [modulesTableMissing, setModulesTableMissing] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showAddModule, setShowAddModule] = useState(false);
   const [newModuleTitle, setNewModuleTitle] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
-  // Форма нового урока — без ID, он генерируется при сохранении
+  const [error, setError] = useState<string | null>(null);
   const [newForm, setNewForm] = useState(EMPTY_FORM);
 
-  const handleSaveAll = async (updated: Lesson[]) => {
-    setSaving(true);
-    try {
-      await saveLessons(updated);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (e: any) {
-      alert(`Ошибка: ${e.message}\n\nСоздайте таблицу lessons_content в Supabase (см. SUPABASE_SETUP.md)`);
-    } finally {
-      setSaving(false);
-    }
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/modules');
+        const body = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (res.ok) {
+          setModules(body.modules ?? []);
+          setModulesTableMissing(Boolean(body.tableMissing));
+        }
+      } catch (e) {
+        console.error('[lessons] modules load failed', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const flashOk = () => {
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   };
 
   const handleAdd = async () => {
-    if (!newForm.title || !newForm.content) return;
-    // ID генерируется здесь — на актуальном состоянии lessons
-    const id = nextLessonId(lessons);
-    const moduleObj = modules.find(m => m.number === newForm.moduleNumber) ?? modules[0];
-    const lesson: Lesson = {
-      id,
-      title: newForm.title,
-      module: moduleObj.title,
-      moduleNumber: moduleObj.number,
-      content: newForm.content,
-      image: newForm.image,
-      videoUrl: newForm.videoUrl,
-    };
-    const updated = [...lessons, lesson];
-    setLessons(updated);
-    await handleSaveAll(updated);
-    setNewForm(EMPTY_FORM);
-    setShowAdd(false);
+    if (!newForm.title || !newForm.content) {
+      setError('Заполните название и содержание урока');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const moduleObj = modules.find(m => m.number === newForm.moduleNumber) ?? modules[0];
+      const { lesson } = await apiJson('/api/admin/lessons', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: newForm.title,
+          module: moduleObj.title,
+          moduleNumber: moduleObj.number,
+          content: newForm.content,
+          image: newForm.image || null,
+          videoUrl: newForm.videoUrl || null,
+        }),
+      });
+      setLessons(p => [...p, lesson]);
+      flashOk();
+      setNewForm(EMPTY_FORM);
+      setShowAdd(false);
+      router.refresh();
+    } catch (e: any) {
+      console.error('[lessons] add failed', e);
+      setError(e?.message || 'Ошибка создания');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Удалить урок?')) return;
-    const updated = lessons.filter(l => l.id !== id);
-    setLessons(updated);
-    await handleSaveAll(updated);
+    setBusy(true);
+    setError(null);
+    try {
+      await apiJson(`/api/admin/lessons/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      setLessons(p => p.filter(l => l.id !== id));
+      flashOk();
+      router.refresh();
+    } catch (e: any) {
+      console.error('[lessons] delete failed', e);
+      setError(e?.message || 'Ошибка удаления');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleSaveLesson = async (id: string, data: Lesson) => {
-    const updated = lessons.map(l => l.id === id ? data : l);
-    setLessons(updated);
-    await handleSaveAll(updated);
-    setEditId(null);
+    setBusy(true);
+    setError(null);
+    try {
+      const { lesson } = await apiJson(`/api/admin/lessons/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+      setLessons(p => p.map(l => l.id === id ? lesson : l));
+      flashOk();
+      setEditId(null);
+      router.refresh();
+    } catch (e: any) {
+      console.error('[lessons] update failed', e);
+      setError(e?.message || 'Ошибка обновления');
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const handleAddModule = () => {
-    if (!newModuleTitle.trim()) return;
-    const number = modules.length + 1;
-    const title = `Модуль ${number}: ${newModuleTitle.trim()}`;
-    setModules(p => [...p, { number, title }]);
-    setNewModuleTitle('');
-    setShowAddModule(false);
+  const handleAddModule = async () => {
+    const title = newModuleTitle.trim();
+    if (!title) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { module } = await apiJson('/api/admin/modules', {
+        method: 'POST',
+        body: JSON.stringify({ title }),
+      });
+      setModules(p => [...p, module].sort((a, b) => a.number - b.number));
+      setNewModuleTitle('');
+      setShowAddModule(false);
+      flashOk();
+      router.refresh();
+    } catch (e: any) {
+      console.error('[modules] add failed', e);
+      setError(e?.message || 'Ошибка создания модуля');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const grouped = modules.map(m => ({
@@ -110,6 +172,53 @@ export default function LessonsAdminClient({ initialLessons }: { initialLessons:
 
   return (
     <div>
+      {modulesTableMissing && (
+        <div style={{
+          background: 'rgba(251, 191, 36, 0.12)',
+          border: '1px solid rgba(251, 191, 36, 0.4)',
+          color: '#fde68a',
+          borderRadius: '0.75rem',
+          padding: '0.875rem 1rem',
+          marginBottom: '1rem',
+          fontSize: '0.875rem',
+        }}>
+          <strong>Таблица модулей ещё не создана.</strong> Чтобы можно было сохранять новые модули,
+          откройте Supabase → SQL Editor и выполните:
+          <pre style={{ marginTop: 8, padding: '0.5rem 0.75rem', background: 'rgba(0,0,0,0.3)', borderRadius: 6, overflowX: 'auto', fontSize: '0.78rem' }}>
+{`CREATE TABLE IF NOT EXISTS modules_content (
+  number INTEGER PRIMARY KEY,
+  title TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE modules_content ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read modules" ON modules_content FOR SELECT USING (true);
+CREATE POLICY "Service write modules" ON modules_content FOR ALL USING (true);`}
+          </pre>
+          А затем в терминале: <code>node scripts/setup-modules-table.mjs</code>
+        </div>
+      )}
+      {dbEmpty && <AdminEmptyBanner type="lessons" />}
+      {error && (
+        <div style={{
+          background: 'rgba(248,113,113,0.12)',
+          border: '1px solid rgba(248,113,113,0.4)',
+          color: '#fecaca',
+          borderRadius: '0.75rem',
+          padding: '0.875rem 1rem',
+          marginBottom: '1rem',
+          fontSize: '0.9rem',
+        }}>
+          <strong>Ошибка:</strong> {error}
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            style={{ float: 'right', background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1 }}
+            aria-label="Закрыть"
+          >
+            ×
+          </button>
+        </div>
+      )}
       <div className={styles.toolbar}>
         <button className={styles.btnAdd} onClick={() => { setShowAdd(!showAdd); setNewForm(EMPTY_FORM); }}>
           <Plus size={18} /> Добавить урок
@@ -118,7 +227,7 @@ export default function LessonsAdminClient({ initialLessons }: { initialLessons:
           <FolderPlus size={18} /> Добавить модуль
         </button>
         {saved && <span className={styles.savedMsg}><Check size={16} /> Сохранено</span>}
-        {saving && <span className={styles.savingMsg}>Сохранение...</span>}
+        {busy && <span className={styles.savingMsg}>Сохранение...</span>}
       </div>
 
       {showAddModule && (
@@ -151,7 +260,7 @@ export default function LessonsAdminClient({ initialLessons }: { initialLessons:
           onChange={(k, v) => setNewForm(p => ({ ...p, [k]: v }))}
           onSave={handleAdd}
           onCancel={() => setShowAdd(false)}
-          saving={saving}
+          saving={busy}
         />
       )}
 
@@ -178,7 +287,7 @@ export default function LessonsAdminClient({ initialLessons }: { initialLessons:
                   <button className={styles.btnIcon} onClick={() => setEditId(editId === lesson.id ? null : lesson.id)}>
                     <Pencil size={15} />
                   </button>
-                  <button className={`${styles.btnIcon} ${styles.btnDanger}`} onClick={() => handleDelete(lesson.id)}>
+                  <button className={`${styles.btnIcon} ${styles.btnDanger}`} onClick={() => handleDelete(lesson.id)} disabled={busy}>
                     <Trash2 size={15} />
                   </button>
                   {expanded === lesson.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -191,7 +300,7 @@ export default function LessonsAdminClient({ initialLessons }: { initialLessons:
                   modules={modules}
                   onSave={(data) => handleSaveLesson(lesson.id, data)}
                   onCancel={() => setEditId(null)}
-                  saving={saving}
+                  saving={busy}
                 />
               )}
 
@@ -270,7 +379,6 @@ function EditLessonForm({ lesson, modules, onSave, onCancel, saving }: {
   const [data, setData] = useState({ ...lesson });
   const set = (k: string, v: any) => setData(p => {
     const updated = { ...p, [k]: v };
-    // Синхронизируем module title при смене moduleNumber
     if (k === 'moduleNumber') {
       const m = modules.find(x => x.number === v);
       if (m) updated.module = m.title;

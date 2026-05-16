@@ -9,9 +9,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (!user) redirect('/sign_in');
 
-  // Проверяем роль admin в user_metadata или profiles
-  const isAdmin = user.user_metadata?.role === 'admin' ||
-    user.email === process.env.ADMIN_EMAIL;
+  const adminEmail = process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+  const isAdminByRole = user.user_metadata?.role === 'admin';
+  const isAdminByEmail = Boolean(
+    user.email &&
+    adminEmail &&
+    user.email.toLowerCase() === adminEmail.toLowerCase()
+  );
+  const isAdmin = isAdminByRole || isAdminByEmail;
 
   if (!isAdmin) redirect('/dashboard');
 

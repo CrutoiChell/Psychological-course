@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle, ChevronLeft, ChevronRight, Loader2, X, ArrowRight } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { markLessonCompleted, unmarkLessonCompleted } from '@/app/actions/progress';
 import type { Lesson } from '@/data/lessons';
+import { toEmbedUrl } from '@/lib/embed-url';
 import StarRating from '@/components/StarRating/StarRating';
 import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
@@ -48,24 +50,29 @@ export default function LessonClient({ lesson, prevLesson, nextLesson }: Props) 
 
   const handleComplete = async () => {
     setSubmitting(true);
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setSubmitting(false); return; }
-
-    const { error } = await supabase.from('user_progress').upsert({
-      user_id: user.id,
-      lesson_id: lesson.id,
-      completed: true,
-      completed_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,lesson_id' });
-
-    if (!error) {
+    try {
+      await markLessonCompleted(lesson.id);
       setIsCompleted(true);
       setShowModal(true);
-    } else {
-      alert(`Не удалось сохранить прогресс: ${error.message}`);
+    } catch (e: any) {
+      alert(`Не удалось сохранить прогресс: ${e.message}`);
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
+  };
+
+  const handleUncomplete = async () => {
+    if (!confirm('Снять отметку «пройден» с этого урока?')) return;
+    setSubmitting(true);
+    try {
+      await unmarkLessonCompleted(lesson.id);
+      setIsCompleted(false);
+      setShowModal(false);
+    } catch (e: any) {
+      alert(`Ошибка: ${e.message}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleRate = async (stars: number) => {
@@ -113,7 +120,7 @@ export default function LessonClient({ lesson, prevLesson, nextLesson }: Props) 
             {lesson.videoUrl && (
               <div className={styles.videoContainer}>
                 <iframe
-                  src={lesson.videoUrl}
+                  src={toEmbedUrl(lesson.videoUrl) ?? lesson.videoUrl}
                   title={lesson.title}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
@@ -150,9 +157,14 @@ export default function LessonClient({ lesson, prevLesson, nextLesson }: Props) 
                   )}
                 </button>
               ) : (
-                <Link href={nextLesson ? `/lesson/${nextLesson.id}` : '/course'} className={styles.btnNext}>
-                  {nextLesson ? <>Следующий урок <ChevronRight size={18} /></> : <>Завершить курс <ChevronRight size={18} /></>}
-                </Link>
+                <div className={styles.completedActions}>
+                  <Link href={nextLesson ? `/lesson/${nextLesson.id}` : '/course'} className={styles.btnNext}>
+                    {nextLesson ? <>Следующий урок <ChevronRight size={18} /></> : <>Завершить курс <ChevronRight size={18} /></>}
+                  </Link>
+                  <button type="button" onClick={handleUncomplete} disabled={submitting} className={styles.btnUncomplete}>
+                    Снять отметку
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -200,7 +212,7 @@ export default function LessonClient({ lesson, prevLesson, nextLesson }: Props) 
               <CheckCircle size={48} />
             </div>
             <h2>Урок пройден!</h2>
-            <p>Отличная работа! Как вам этот урок?</p>
+            <p>Отличная работа! Оцените урок — нажмите на звёзды ниже (от 1 до 5):</p>
 
             <StarRating onRate={handleRate} disabled={ratingSubmitted} />
 

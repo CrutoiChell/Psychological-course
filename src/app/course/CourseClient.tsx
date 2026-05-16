@@ -2,14 +2,16 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { ChevronRight, ArrowLeft } from 'lucide-react';
+import { ChevronRight, ArrowLeft, CheckCircle } from 'lucide-react';
 import { gsap } from 'gsap';
 import type { Lesson } from '@/data/lessons';
 import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 import styles from './page.module.scss';
 
-export default function CourseClient({ lessons }: { lessons: Lesson[] }) {
+export default function CourseClient({ lessons, completedIds = [] }: { lessons: Lesson[]; completedIds?: string[] }) {
+  const completedSet = new Set(completedIds);
+
   useEffect(() => {
     const t = setTimeout(() => {
       gsap.fromTo('[data-animate]',
@@ -38,25 +40,45 @@ export default function CourseClient({ lessons }: { lessons: Lesson[] }) {
           </div>
 
           <div className={styles.modules}>
-            {Object.values(modules).map((module, mi) => (
-              <div key={module.number} className={styles.module} data-animate data-delay={`${mi * 0.1}`}>
-                <div className={styles.moduleHeader}>
-                  <div className={styles.moduleNumber}>{module.number}</div>
-                  <h2 className={styles.moduleTitle}>{module.title}</h2>
+            {Object.values(modules).map((module, mi) => {
+              const moduleDone = module.lessons.length > 0 && module.lessons.every(l => completedSet.has(l.id));
+              return (
+                <div
+                  key={module.number}
+                  className={`${styles.module} ${moduleDone ? styles.moduleCompleted : ''}`}
+                  data-animate
+                  data-delay={`${mi * 0.1}`}
+                >
+                  <div className={styles.moduleHeader}>
+                    <div className={styles.moduleNumber}>{module.number}</div>
+                    <h2 className={styles.moduleTitle}>{module.title}</h2>
+                    {moduleDone && <CheckCircle size={22} className={styles.moduleCheck} />}
+                  </div>
+                  <div className={styles.lessons}>
+                    {module.lessons.map((lesson) => {
+                      const done = completedSet.has(lesson.id);
+                      return (
+                        <Link
+                          key={lesson.id}
+                          href={`/lesson/${lesson.id}`}
+                          className={`${styles.lessonLink} ${done ? styles.lessonCompleted : ''}`}
+                        >
+                          <div className={styles.lessonLeft}>
+                            <div className={`${styles.lessonNumber} ${done ? styles.lessonNumberDone : ''}`}>
+                              {done ? <CheckCircle size={18} /> : lesson.id}
+                            </div>
+                            <div className={styles.lessonTitle}>{lesson.title}</div>
+                          </div>
+                          {done
+                            ? <CheckCircle size={20} className={styles.lessonCheck} />
+                            : <ChevronRight size={20} className={styles.arrow} />}
+                        </Link>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className={styles.lessons}>
-                  {module.lessons.map((lesson) => (
-                    <Link key={lesson.id} href={`/lesson/${lesson.id}`} className={styles.lessonLink}>
-                      <div className={styles.lessonLeft}>
-                        <div className={styles.lessonNumber}>{lesson.id}</div>
-                        <div className={styles.lessonTitle}>{lesson.title}</div>
-                      </div>
-                      <ChevronRight size={20} className={styles.arrow} />
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <Link href="/dashboard" className={styles.backLink}>

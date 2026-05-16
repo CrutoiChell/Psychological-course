@@ -46,6 +46,10 @@ export default function Home() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsLoggedIn(!!session?.user);
     });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setIsLoggedIn(!!session?.user);
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   const loadStats = async (supabase: any) => {
@@ -153,8 +157,8 @@ export default function Home() {
                 <span>{isLoggedIn ? 'Перейти к курсу' : 'Начать обучение'}</span>
                 <ArrowRight size={22} className={styles.btnIcon} />
               </Link>
-              <Link href="/course" className={styles.btnOutline}>
-                <span>Смотреть курс</span>
+              <Link href={isLoggedIn ? '/course' : '/sign_in'} className={styles.btnOutline}>
+                <span>{isLoggedIn ? 'Смотреть курс' : 'Войти в курс'}</span>
               </Link>
             </div>
 

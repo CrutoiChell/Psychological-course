@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ChevronDown, ChevronUp, Pencil, Plus, Trash2, Check, X } from 'lucide-react';
 import { Test } from '@/data/tests';
-import { saveTests } from '@/app/actions/admin';
+import AdminEmptyBanner from '@/components/AdminEmptyBanner/AdminEmptyBanner';
 import styles from './tests.module.scss';
 
 const DEFAULT_OPTIONS = ['Никогда', 'Редко', 'Иногда', 'Часто', 'Почти всегда'];
@@ -22,87 +23,142 @@ const emptyTest = (): Test => ({
   ],
 });
 
-export default function TestsAdminClient({ initialTests }: { initialTests: Test[] }) {
+async function apiJson(input: RequestInfo, init?: RequestInit) {
+  const res = await fetch(input, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
+  });
+  let body: any = null;
+  try { body = await res.json(); } catch { /* no body */ }
+  if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+  return body;
+}
+
+export default function TestsAdminClient({ initialTests, dbEmpty }: { initialTests: Test[]; dbEmpty?: boolean }) {
+  const router = useRouter();
   const [tests, setTests] = useState(initialTests);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [editTest, setEditTest] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [newTest, setNewTest] = useState<Test>(emptyTest());
-  const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const toggle = (id: string) => setExpanded(p => p === id ? null : id);
 
-  const handleSaveAll = async (updated: Test[]) => {
-    setSaving(true);
-    try {
-      await saveTests(updated);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (e: any) {
-      alert(`Ошибка: ${e.message}\n\nСоздайте таблицу tests_content в Supabase (см. SUPABASE_SETUP.md)`);
-    } finally {
-      setSaving(false);
-    }
+  const flashOk = () => {
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   };
 
   const handleAddTest = async () => {
-    if (!newTest.title) return;
-    const updated = [...tests, newTest];
-    setTests(updated);
-    await handleSaveAll(updated);
-    setNewTest(emptyTest());
-    setShowAdd(false);
+    if (!newTest.title) { setError('Укажите название теста'); return; }
+    setBusy(true);
+    setError(null);
+    try {
+      const { test } = await apiJson('/api/admin/tests', {
+        method: 'POST',
+        body: JSON.stringify(newTest),
+      });
+      setTests(p => [...p, test]);
+      setNewTest(emptyTest());
+      setShowAdd(false);
+      flashOk();
+      router.refresh();
+    } catch (e: any) {
+      console.error('[tests] add failed', e);
+      setError(e?.message || 'Ошибка создания');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleDeleteTest = async (id: string) => {
     if (!confirm('Удалить тест?')) return;
-    const updated = tests.filter(t => t.id !== id);
-    setTests(updated);
-    await handleSaveAll(updated);
+    setBusy(true);
+    setError(null);
+    try {
+      await apiJson(`/api/admin/tests/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      setTests(p => p.filter(t => t.id !== id));
+      flashOk();
+      router.refresh();
+    } catch (e: any) {
+      console.error('[tests] delete failed', e);
+      setError(e?.message || 'Ошибка удаления');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const patchTest = async (id: string, patch: Partial<Test>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const { test } = await apiJson(`/api/admin/tests/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      });
+      setTests(p => p.map(t => t.id === id ? test : t));
+      flashOk();
+      router.refresh();
+    } catch (e: any) {
+      console.error('[tests] patch failed', e);
+      setError(e?.message || 'Ошибка обновления');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const updateTest = async (id: string, updates: Partial<Test>) => {
-    const updated = tests.map(t => t.id === id ? { ...t, ...updates } : t);
-    setTests(updated);
-    await handleSaveAll(updated);
+    await patchTest(id, updates);
     setEditTest(null);
   };
 
-  const updateQuestion = (testId: string, qId: number, text: string) => {
-    setTests(p => p.map(t => t.id === testId ? {
-      ...t, questions: t.questions.map(q => q.id === qId ? { ...q, question: text } : q)
-    } : t));
+  const updateQuestion = async (testId: string, qId: number, text: string) => {
+    const t = tests.find(x => x.id === testId);
+    if (!t) return;
+    const questions = t.questions.map(q => q.id === qId ? { ...q, question: text } : q);
+    await patchTest(testId, { questions });
   };
 
   const deleteQuestion = async (testId: string, qId: number) => {
-    const updated = tests.map(t => t.id === testId ? {
-      ...t, questions: t.questions.filter(q => q.id !== qId)
-    } : t);
-    setTests(updated);
-    await handleSaveAll(updated);
+    const t = tests.find(x => x.id === testId);
+    if (!t) return;
+    const questions = t.questions.filter(q => q.id !== qId);
+    await patchTest(testId, { questions });
   };
 
   const addQuestion = async (testId: string) => {
-    const updated = tests.map(t => t.id === testId ? {
-      ...t, questions: [...t.questions, { id: Date.now(), question: 'Новый вопрос', options: DEFAULT_OPTIONS }]
-    } : t);
-    setTests(updated);
-    await handleSaveAll(updated);
-  };
-
-  const saveQuestions = async (testId: string) => {
-    await handleSaveAll(tests);
+    const t = tests.find(x => x.id === testId);
+    if (!t) return;
+    const questions = [...t.questions, { id: Date.now(), question: 'Новый вопрос', options: DEFAULT_OPTIONS }];
+    await patchTest(testId, { questions });
   };
 
   return (
     <div>
+      {dbEmpty && <AdminEmptyBanner type="tests" />}
+      {error && (
+        <div className={styles.errorBanner ?? ''} style={{
+          background: 'rgba(248,113,113,0.12)',
+          border: '1px solid rgba(248,113,113,0.4)',
+          color: '#fecaca',
+          borderRadius: '0.75rem',
+          padding: '0.875rem 1rem',
+          marginBottom: '1rem',
+          fontSize: '0.9rem',
+        }}>
+          <strong>Ошибка:</strong> {error}
+          <button type="button" onClick={() => setError(null)} style={{ float: 'right', background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1 }}>×</button>
+        </div>
+      )}
       <div className={styles.toolbar}>
         <button className={styles.btnAdd} onClick={() => setShowAdd(!showAdd)}>
           <Plus size={18} /> Добавить тест
         </button>
         {saved && <span className={styles.savedMsg}><Check size={16} /> Сохранено</span>}
-        {saving && <span className={styles.savingMsg}>Сохранение...</span>}
+        {busy && <span className={styles.savingMsg}>Сохранение...</span>}
       </div>
 
       {showAdd && (
@@ -132,7 +188,7 @@ export default function TestsAdminClient({ initialTests }: { initialTests: Test[
             </label>
           </div>
           <div className={styles.formActions}>
-            <button className={styles.btnSave} onClick={handleAddTest} disabled={saving}>
+            <button className={styles.btnSave} onClick={handleAddTest} disabled={busy}>
               <Check size={16} /> Создать тест
             </button>
             <button className={styles.btnCancel} onClick={() => setShowAdd(false)}><X size={16} /> Отмена</button>
@@ -154,7 +210,7 @@ export default function TestsAdminClient({ initialTests }: { initialTests: Test[
                 <button className={styles.btnIcon} onClick={() => setEditTest(editTest === test.id ? null : test.id)}>
                   <Pencil size={15} />
                 </button>
-                <button className={`${styles.btnIcon} ${styles.btnDanger}`} onClick={() => handleDeleteTest(test.id)}>
+                <button className={`${styles.btnIcon} ${styles.btnDanger}`} onClick={() => handleDeleteTest(test.id)} disabled={busy}>
                   <Trash2 size={15} />
                 </button>
                 {expanded === test.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -209,9 +265,6 @@ export default function TestsAdminClient({ initialTests }: { initialTests: Test[
                 <div className={styles.questionsFooter}>
                   <button className={styles.btnAddQuestion} onClick={() => addQuestion(test.id)}>
                     <Plus size={16} /> Добавить вопрос
-                  </button>
-                  <button className={styles.btnSaveQuestions} onClick={() => saveQuestions(test.id)} disabled={saving}>
-                    <Check size={16} /> Сохранить вопросы
                   </button>
                 </div>
               </div>

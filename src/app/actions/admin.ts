@@ -8,8 +8,19 @@ async function requireAdmin() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Не авторизован');
-  const isAdmin = user.user_metadata?.role === 'admin' || user.email === process.env.ADMIN_EMAIL;
-  if (!isAdmin) throw new Error('Нет прав администратора');
+  const adminEmail = process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+  const isAdminByRole = user.user_metadata?.role === 'admin';
+  const isAdminByEmail = Boolean(
+    user.email &&
+    adminEmail &&
+    user.email.toLowerCase() === adminEmail.toLowerCase()
+  );
+  const isAdmin = isAdminByRole || isAdminByEmail;
+  if (!isAdmin) {
+    throw new Error(
+      `Нет прав администратора. Вы вошли как "${user.email}", а ADMIN_EMAIL="${adminEmail ?? '(не задан)'}".`
+    );
+  }
   return user;
 }
 
@@ -20,15 +31,21 @@ function revalidateAll() {
 // ─── Lessons ────────────────────────────────────────────────────────────────
 
 export async function saveLessons(lessons: any[]) {
-  await requireAdmin();
+  try {
+    await requireAdmin();
+  } catch (e: any) {
+    console.error('[saveLessons] requireAdmin failed:', e?.message);
+    throw e;
+  }
   const admin = createAdminClient();
+  console.log('[saveLessons] start: count =', lessons.length);
 
-  // 1. Получаем текущие ID из БД
   const { data: existing, error: getErr } = await admin
     .from('lessons_content')
     .select('id');
 
   if (getErr) {
+    console.error('[saveLessons] select error:', getErr);
     throw new Error(`Таблица lessons_content недоступна: ${getErr.message}. Создайте её по SUPABASE_SETUP.md`);
   }
 
@@ -42,10 +59,12 @@ export async function saveLessons(lessons: any[]) {
       .from('lessons_content')
       .delete()
       .in('id', toDelete);
-    if (delErr) throw new Error(`Ошибка удаления уроков: ${delErr.message}`);
+    if (delErr) {
+      console.error('[saveLessons] delete error:', delErr);
+      throw new Error(`Ошибка удаления уроков: ${delErr.message}`);
+    }
   }
 
-  // 3. Upsert остальные (вставка новых + обновление существующих)
   if (lessons.length > 0) {
     const rows = lessons.map(l => ({
       id: String(l.id),
@@ -59,13 +78,42 @@ export async function saveLessons(lessons: any[]) {
     const { error } = await admin
       .from('lessons_content')
       .upsert(rows, { onConflict: 'id' });
-    if (error) throw new Error(`Ошибка сохранения уроков: ${error.message}`);
+    if (error) {
+      console.error('[saveLessons] upsert error:', error);
+      throw new Error(`Ошибка сохранения уроков: ${error.message} (code=${(error as any).code ?? '—'})`);
+    }
   }
 
   revalidateAll();
+  console.log('[saveLessons] done');
   return { success: true };
 }
 
+function mapLessonRow(r: any) {
+  return {
+    id: r.id,
+    title: r.title,
+    module: r.module,
+    moduleNumber: r.module_number,
+    content: r.content,
+    image: r.image,
+    videoUrl: r.video_url,
+  };
+}
+
+function mapTestRow(r: any) {
+  return {
+    id: r.id,
+    title: r.title,
+    description: r.description,
+    icon: r.icon,
+    showPercent: r.show_percent,
+    questions: r.questions,
+    results: r.results,
+  };
+}
+
+/** Для публичных страниц: fallback на статику только если таблица недоступна */
 export async function getLessons() {
   const admin = createAdminClient();
   const { data, error } = await admin
@@ -74,32 +122,48 @@ export async function getLessons() {
     .order('module_number', { ascending: true })
     .order('id', { ascending: true });
 
-  if (error || !data?.length) {
+  if (error) {
     const { lessons } = await import('@/data/lessons');
     return lessons;
   }
-  return data.map((r: any) => ({
-    id: r.id,
-    title: r.title,
-    module: r.module,
-    moduleNumber: r.module_number,
-    content: r.content,
-    image: r.image,
-    videoUrl: r.video_url,
-  }));
+  if (!data?.length) {
+    const { lessons } = await import('@/data/lessons');
+    return lessons;
+  }
+  return data.map(mapLessonRow);
+}
+
+/** Для админки: только данные из БД, без подстановки статики */
+export async function getLessonsForAdmin() {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from('lessons_content')
+    .select('*')
+    .order('module_number', { ascending: true })
+    .order('id', { ascending: true });
+
+  if (error) throw new Error(`Таблица lessons_content: ${error.message}`);
+  return (data ?? []).map(mapLessonRow);
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 export async function saveTests(tests: any[]) {
-  await requireAdmin();
+  try {
+    await requireAdmin();
+  } catch (e: any) {
+    console.error('[saveTests] requireAdmin failed:', e?.message);
+    throw e;
+  }
   const admin = createAdminClient();
+  console.log('[saveTests] start: count =', tests.length);
 
   const { data: existing, error: getErr } = await admin
     .from('tests_content')
     .select('id');
 
   if (getErr) {
+    console.error('[saveTests] select error:', getErr);
     throw new Error(`Таблица tests_content недоступна: ${getErr.message}. Создайте её по SUPABASE_SETUP.md`);
   }
 
@@ -112,7 +176,10 @@ export async function saveTests(tests: any[]) {
       .from('tests_content')
       .delete()
       .in('id', toDelete);
-    if (delErr) throw new Error(`Ошибка удаления тестов: ${delErr.message}`);
+    if (delErr) {
+      console.error('[saveTests] delete error:', delErr);
+      throw new Error(`Ошибка удаления тестов: ${delErr.message}`);
+    }
   }
 
   if (tests.length > 0) {
@@ -128,10 +195,14 @@ export async function saveTests(tests: any[]) {
     const { error } = await admin
       .from('tests_content')
       .upsert(rows, { onConflict: 'id' });
-    if (error) throw new Error(`Ошибка сохранения тестов: ${error.message}`);
+    if (error) {
+      console.error('[saveTests] upsert error:', error);
+      throw new Error(`Ошибка сохранения тестов: ${error.message} (code=${(error as any).code ?? '—'})`);
+    }
   }
 
   revalidateAll();
+  console.log('[saveTests] done');
   return { success: true };
 }
 
@@ -142,32 +213,46 @@ export async function getTests() {
     .select('*')
     .order('created_at', { ascending: true });
 
-  if (error || !data?.length) {
+  if (error) {
     const { tests } = await import('@/data/tests');
     return tests;
   }
-  return data.map((r: any) => ({
-    id: r.id,
-    title: r.title,
-    description: r.description,
-    icon: r.icon,
-    showPercent: r.show_percent,
-    questions: r.questions,
-    results: r.results,
-  }));
+  if (!data?.length) {
+    const { tests } = await import('@/data/tests');
+    return tests;
+  }
+  return data.map(mapTestRow);
+}
+
+export async function getTestsForAdmin() {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from('tests_content')
+    .select('*')
+    .order('created_at', { ascending: true });
+
+  if (error) throw new Error(`Таблица tests_content: ${error.message}`);
+  return (data ?? []).map(mapTestRow);
 }
 
 // ─── Tips ────────────────────────────────────────────────────────────────────
 
 export async function saveTips(tips: any[]) {
-  await requireAdmin();
+  try {
+    await requireAdmin();
+  } catch (e: any) {
+    console.error('[saveTips] requireAdmin failed:', e?.message);
+    throw e;
+  }
   const admin = createAdminClient();
+  console.log('[saveTips] start: count =', tips.length);
 
   const { data: existing, error: getErr } = await admin
     .from('tips_content')
     .select('id');
 
   if (getErr) {
+    console.error('[saveTips] select error:', getErr);
     throw new Error(`Таблица tips_content недоступна: ${getErr.message}. Создайте её по SUPABASE_SETUP.md`);
   }
 
@@ -180,7 +265,10 @@ export async function saveTips(tips: any[]) {
       .from('tips_content')
       .delete()
       .in('id', toDelete);
-    if (delErr) throw new Error(`Ошибка удаления советов: ${delErr.message}`);
+    if (delErr) {
+      console.error('[saveTips] delete error:', delErr);
+      throw new Error(`Ошибка удаления советов: ${delErr.message}`);
+    }
   }
 
   if (tips.length > 0) {
@@ -194,10 +282,14 @@ export async function saveTips(tips: any[]) {
     const { error } = await admin
       .from('tips_content')
       .upsert(rows, { onConflict: 'id' });
-    if (error) throw new Error(`Ошибка сохранения советов: ${error.message}`);
+    if (error) {
+      console.error('[saveTips] upsert error:', error);
+      throw new Error(`Ошибка сохранения советов: ${error.message} (code=${(error as any).code ?? '—'})`);
+    }
   }
 
   revalidateAll();
+  console.log('[saveTips] done');
   return { success: true };
 }
 
@@ -208,11 +300,51 @@ export async function getTips() {
     .select('*')
     .order('created_at', { ascending: true });
 
-  if (error || !data?.length) {
+  if (error) {
+    const { tips } = await import('@/data/tips');
+    return tips;
+  }
+  if (!data?.length) {
     const { tips } = await import('@/data/tips');
     return tips;
   }
   return data as any[];
+}
+
+export async function getTipsForAdmin() {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from('tips_content')
+    .select('*')
+    .order('created_at', { ascending: true });
+
+  if (error) throw new Error(`Таблица tips_content: ${error.message}`);
+  return data ?? [];
+}
+
+/** Первичная загрузка контента из шаблона в Supabase */
+export async function seedContentFromDefaults() {
+  await requireAdmin();
+  const { lessons } = await import('@/data/lessons');
+  const { tests } = await import('@/data/tests');
+  const { tips } = await import('@/data/tips');
+  await saveLessons(lessons);
+  await saveTests(tests);
+  await saveTips(tips);
+  revalidateAll();
+  return { success: true, lessons: lessons.length, tests: tests.length, tips: tips.length };
+}
+
+// ─── User progress (admin view) ──────────────────────────────────────────────
+
+export async function getAllUserProgress() {
+  await requireAdmin();
+  const admin = createAdminClient();
+  const [{ data: progress }, { data: testResults }] = await Promise.all([
+    admin.from('user_progress').select('user_id, lesson_id, completed, completed_at').eq('completed', true),
+    admin.from('test_results').select('user_id, test_type, score, result_text, created_at').order('created_at', { ascending: false }),
+  ]);
+  return { progress: progress ?? [], testResults: testResults ?? [] };
 }
 
 // ─── Applications ────────────────────────────────────────────────────────────

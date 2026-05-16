@@ -94,7 +94,7 @@ export default function TestClient({ test }: { test: Test }) {
 
               <div className={styles.ratingSection}>
                 <p className={styles.ratingLabel}>
-                  {ratingSubmitted ? 'Спасибо за оценку!' : 'Оцените тест:'}
+                  {ratingSubmitted ? 'Спасибо за оценку!' : 'Оцените тест — нажмите на звёзды (от 1 до 5):'}
                 </p>
                 <StarRating onRate={handleRate} disabled={ratingSubmitted} />
               </div>

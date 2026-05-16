@@ -8,6 +8,10 @@ export default async function CoursePage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/sign_in');
 
-  const lessons = await getLessons();
-  return <CourseClient lessons={lessons} />;
+  const [lessons, { data: progressData }] = await Promise.all([
+    getLessons(),
+    supabase.from('user_progress').select('lesson_id').eq('user_id', user.id).eq('completed', true),
+  ]);
+  const completedIds = (progressData ?? []).map(p => p.lesson_id);
+  return <CourseClient lessons={lessons} completedIds={completedIds} />;
 }

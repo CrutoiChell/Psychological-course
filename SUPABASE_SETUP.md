@@ -13,7 +13,17 @@
 ```env
 NEXT_PUBLIC_SUPABASE_URL=твой_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=твой_anon_key
+SUPABASE_SERVICE_ROLE_KEY=твой_service_role_key
 ```
+
+**Service role key** обязателен для админ-панели (сохранение уроков, тестов, советов).  
+Взять: Supabase → Settings → API → `service_role` (secret).
+
+Первичная загрузка контента в БД:
+```bash
+npx tsx scripts/migrate-to-supabase.ts
+```
+Или в админке кнопка «Импортировать шаблон», если таблицы пустые.
 
 ## 3. Создание таблиц в Supabase
 
@@ -109,6 +119,9 @@ CREATE POLICY "Users can insert own progress" ON user_progress
 CREATE POLICY "Users can update own progress" ON user_progress
   FOR UPDATE USING (auth.uid() = user_id);
 
+-- Уникальность пары пользователь + урок (для корректного сохранения прогресса)
+CREATE UNIQUE INDEX IF NOT EXISTS user_progress_user_lesson_idx ON user_progress (user_id, lesson_id);
+
 -- Политики для test_results
 CREATE POLICY "Users can view own test results" ON test_results
   FOR SELECT USING (auth.uid() = user_id);
@@ -182,6 +195,22 @@ CREATE TABLE IF NOT EXISTS tips_content (
 ALTER TABLE tips_content ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public read tips" ON tips_content FOR SELECT USING (true);
 CREATE POLICY "Admin write tips" ON tips_content FOR ALL USING (true);
+
+-- Модули (для админки: добавление/переименование без привязки к урокам)
+CREATE TABLE IF NOT EXISTS modules_content (
+  number INTEGER PRIMARY KEY,
+  title TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE modules_content ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read modules" ON modules_content FOR SELECT USING (true);
+CREATE POLICY "Service write modules" ON modules_content FOR ALL USING (true);
+```
+
+После создания таблицы можно сидировать модули из существующих уроков:
+```bash
+node scripts/setup-modules-table.mjs
 ```
 
 ## Настройка email уведомлений (Resend)

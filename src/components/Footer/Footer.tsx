@@ -1,10 +1,25 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Brain, Send, Rss, Globe } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 import styles from './Footer.module.scss';
 
 export default function Footer() {
+  const [user, setUser] = useState<{ id: string } | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   return (
     <footer className={styles.footer}>
       <div className={styles.container}>
@@ -23,16 +38,24 @@ export default function Footer() {
           <div className={styles.links}>
             <h4>Навигация</h4>
             <Link href="/">Главная</Link>
-            <Link href="/course">Курс</Link>
-            <Link href="/test">Тесты</Link>
-            <Link href="/dashboard">Личный кабинет</Link>
+            <Link href={user ? '/course' : '/sign_in'}>Курс</Link>
+            <Link href={user ? '/test' : '/sign_in'}>Тесты</Link>
+            <Link href={user ? '/dashboard' : '/sign_in'}>Личный кабинет</Link>
           </div>
 
           <div className={styles.links}>
             <h4>Ресурсы</h4>
-            <Link href="/sign_up">Регистрация</Link>
-            <Link href="/sign_in">Вход</Link>
-            <Link href="/certificate">Сертификат</Link>
+            {user ? (
+              <>
+                <Link href="/dashboard">Мой кабинет</Link>
+                <Link href="/certificate">Сертификат</Link>
+              </>
+            ) : (
+              <>
+                <Link href="/sign_up">Регистрация</Link>
+                <Link href="/sign_in">Вход</Link>
+              </>
+            )}
           </div>
 
           <div className={styles.links}>
