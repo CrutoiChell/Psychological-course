@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Pencil, Trash2, Check, X, ChevronDown, ChevronUp, FolderPlus } from 'lucide-react';
 import { Lesson } from '@/data/lessons';
+import { VIDEO_URL_HINT } from '@/lib/embed-url';
 import AdminEmptyBanner from '@/components/AdminEmptyBanner/AdminEmptyBanner';
 import styles from './lessons.module.scss';
 
@@ -349,9 +350,11 @@ function LessonForm({ form, modules, onChange, onSave, onCancel, saving }: {
             onChange={e => onChange('image', e.target.value)} placeholder="/image_0.jpg" />
         </div>
         <div className={styles.formGroup}>
-          <label>Видео URL (YouTube embed)</label>
+          <label>Видео URL</label>
           <input className={styles.input} value={form.videoUrl ?? ''}
-            onChange={e => onChange('videoUrl', e.target.value || null)} placeholder="https://youtube.com/embed/..." />
+            onChange={e => onChange('videoUrl', e.target.value || null)}
+            placeholder="https://rutube.ru/video/..." title={VIDEO_URL_HINT} />
+          <span className={styles.fieldHint}>{VIDEO_URL_HINT}</span>
         </div>
       </div>
       <div className={styles.formGroup}>
@@ -411,7 +414,9 @@ function EditLessonForm({ lesson, modules, onSave, onCancel, saving }: {
         <div className={styles.formGroup}>
           <label>Видео URL</label>
           <input className={styles.input} value={data.videoUrl ?? ''}
-            onChange={e => set('videoUrl', e.target.value || null)} />
+            onChange={e => set('videoUrl', e.target.value || null)}
+            placeholder="https://rutube.ru/video/..." title={VIDEO_URL_HINT} />
+          <span className={styles.fieldHint}>{VIDEO_URL_HINT}</span>
         </div>
       </div>
       <div className={styles.formGroup}>

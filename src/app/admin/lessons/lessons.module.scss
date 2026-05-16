@@ -218,6 +218,13 @@
   }
 }
 
+.fieldHint {
+  font-size: 0.75rem;
+  color: var(--text-accent);
+  opacity: 0.75;
+  line-height: 1.35;
+}
+
 .input, .select, .textarea {
   padding: 0.875rem 1rem;
   background: var(--bg-primary);
