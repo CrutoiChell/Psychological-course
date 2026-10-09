@@ -21,7 +21,7 @@ export default function Header() {
       setUser(session?.user ?? null);
       const u = session?.user;
       if (u) {
-        const admin = u.user_metadata?.role === 'admin' || u.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+        const admin = u.app_metadata?.role === 'admin';
         setIsAdmin(admin);
       }
     });
@@ -31,7 +31,7 @@ export default function Header() {
       setUser(session?.user ?? null);
       const u = session?.user;
       if (u) {
-        const admin = u.user_metadata?.role === 'admin' || u.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+        const admin = u.app_metadata?.role === 'admin';
         setIsAdmin(admin);
       } else {
         setIsAdmin(false);
