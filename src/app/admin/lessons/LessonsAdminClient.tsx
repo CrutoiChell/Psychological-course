@@ -193,7 +193,7 @@ export default function LessonsAdminClient({ initialLessons, dbEmpty }: { initia
 );
 ALTER TABLE modules_content ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public read modules" ON modules_content FOR SELECT USING (true);
-CREATE POLICY "Service write modules" ON modules_content FOR ALL USING (true);`}
+CREATE POLICY "Service write modules" ON modules_content FOR ALL TO service_role USING (true) WITH CHECK (true);`}
           </pre>
           А затем в терминале: <code>node scripts/setup-modules-table.mjs</code>
         </div>
