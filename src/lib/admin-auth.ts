@@ -12,19 +12,13 @@ export async function checkAdmin(): Promise<AdminCheck> {
     return { ok: false, status: 401, reason: 'Не авторизован' };
   }
 
-  const adminEmail = process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL;
-  const byRole = user.user_metadata?.role === 'admin';
-  const byEmail = Boolean(
-    user.email &&
-    adminEmail &&
-    user.email.toLowerCase() === adminEmail.toLowerCase()
-  );
-
-  if (!byRole && !byEmail) {
+  // Only a trusted server with the service-role key can grant app_metadata.
+  // user_metadata and the user's email are not authorization sources.
+  if (user.app_metadata?.role !== 'admin') {
     return {
       ok: false,
       status: 403,
-      reason: `Не админ. email="${user.email}", ADMIN_EMAIL="${adminEmail ?? '(не задан)'}"`,
+      reason: 'Нет прав администратора',
     };
   }
 
