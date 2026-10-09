@@ -78,7 +78,7 @@ CREATE POLICY "Anyone can insert applications" ON applications
   FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Admins can read applications" ON applications
-  FOR SELECT USING (true);
+  FOR SELECT TO service_role USING (true);
 
 -- Таблица рейтингов (звёзды после уроков и тестов)
 CREATE TABLE ratings (
@@ -164,7 +164,7 @@ CREATE TABLE IF NOT EXISTS lessons_content (
 
 ALTER TABLE lessons_content ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public read lessons" ON lessons_content FOR SELECT USING (true);
-CREATE POLICY "Admin write lessons" ON lessons_content FOR ALL USING (true);
+CREATE POLICY "Admin write lessons" ON lessons_content FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- Тесты
 CREATE TABLE IF NOT EXISTS tests_content (
@@ -180,7 +180,7 @@ CREATE TABLE IF NOT EXISTS tests_content (
 
 ALTER TABLE tests_content ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public read tests" ON tests_content FOR SELECT USING (true);
-CREATE POLICY "Admin write tests" ON tests_content FOR ALL USING (true);
+CREATE POLICY "Admin write tests" ON tests_content FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- Советы дня
 CREATE TABLE IF NOT EXISTS tips_content (
@@ -194,7 +194,7 @@ CREATE TABLE IF NOT EXISTS tips_content (
 
 ALTER TABLE tips_content ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public read tips" ON tips_content FOR SELECT USING (true);
-CREATE POLICY "Admin write tips" ON tips_content FOR ALL USING (true);
+CREATE POLICY "Admin write tips" ON tips_content FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- Модули (для админки: добавление/переименование без привязки к урокам)
 CREATE TABLE IF NOT EXISTS modules_content (
@@ -205,7 +205,7 @@ CREATE TABLE IF NOT EXISTS modules_content (
 
 ALTER TABLE modules_content ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public read modules" ON modules_content FOR SELECT USING (true);
-CREATE POLICY "Service write modules" ON modules_content FOR ALL USING (true);
+CREATE POLICY "Service write modules" ON modules_content FOR ALL TO service_role USING (true) WITH CHECK (true);
 ```
 
 После создания таблицы можно сидировать модули из существующих уроков:
