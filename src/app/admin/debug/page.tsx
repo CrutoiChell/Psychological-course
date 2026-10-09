@@ -1,10 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { checkAdmin } from '@/lib/admin-auth';
 import { getAdminNotifyRecipients } from '@/lib/notify-email';
 import DebugButtons from './DebugButtons';
 import styles from '../page.module.scss';
 
 async function getDiagnostics() {
+  const auth = await checkAdmin();
+  if (!auth.ok) throw new Error(auth.reason);
   const out: Record<string, any> = {};
 
   const supabase = await createClient();
@@ -12,7 +15,7 @@ async function getDiagnostics() {
   out.session = userErr
     ? `ошибка: ${userErr.message}`
     : user
-      ? { email: user.email, id: user.id, role: user.user_metadata?.role ?? '(нет)' }
+      ? { email: user.email, id: user.id, role: user.app_metadata?.role ?? '(нет)' }
       : '(не залогинен)';
 
   out.env = {
@@ -26,11 +29,7 @@ async function getDiagnostics() {
     RESEND_API_KEY: process.env.RESEND_API_KEY ? 'OK' : 'MISSING',
   };
 
-  const adminEmail = process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL;
-  out.isAdmin = user
-    ? user.user_metadata?.role === 'admin' ||
-      (Boolean(user.email) && Boolean(adminEmail) && user.email!.toLowerCase() === adminEmail!.toLowerCase())
-    : false;
+  out.isAdmin = auth.ok;
 
   try {
     const admin = createAdminClient();
