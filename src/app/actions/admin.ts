@@ -3,25 +3,12 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { checkAdmin } from '@/lib/admin-auth';
 
 async function requireAdmin() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Не авторизован');
-  const adminEmail = process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL;
-  const isAdminByRole = user.user_metadata?.role === 'admin';
-  const isAdminByEmail = Boolean(
-    user.email &&
-    adminEmail &&
-    user.email.toLowerCase() === adminEmail.toLowerCase()
-  );
-  const isAdmin = isAdminByRole || isAdminByEmail;
-  if (!isAdmin) {
-    throw new Error(
-      `Нет прав администратора. Вы вошли как "${user.email}", а ADMIN_EMAIL="${adminEmail ?? '(не задан)'}".`
-    );
-  }
-  return user;
+  const auth = await checkAdmin();
+  if (!auth.ok) throw new Error(auth.reason);
+  return auth;
 }
 
 function revalidateAll() {
@@ -137,6 +124,7 @@ export async function getLessons() {
 
 /** Для админки: только данные из БД, без подстановки статики */
 export async function getLessonsForAdmin() {
+  await requireAdmin();
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('lessons_content')
@@ -229,6 +217,7 @@ export async function getTests() {
 }
 
 export async function getTestsForAdmin() {
+  await requireAdmin();
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('tests_content')
@@ -318,6 +307,7 @@ export async function getTips() {
 }
 
 export async function getTipsForAdmin() {
+  await requireAdmin();
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('tips_content')
