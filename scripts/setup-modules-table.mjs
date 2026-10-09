@@ -28,7 +28,7 @@ ALTER TABLE modules_content ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public read modules" ON modules_content;
 CREATE POLICY "Public read modules" ON modules_content FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Service write modules" ON modules_content;
-CREATE POLICY "Service write modules" ON modules_content FOR ALL USING (true);
+CREATE POLICY "Service write modules" ON modules_content FOR ALL TO service_role USING (true) WITH CHECK (true);
 `;
 
 console.log('SQL:\n' + sql);
