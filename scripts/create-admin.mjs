@@ -39,7 +39,7 @@ if (password.length < 6) {
 
 const supabase = createClient(url, key, { auth: { persistSession: false } });
 
-const userMeta = { name, role: 'admin' };
+const userMeta = { name };
 
 let existing = null;
 let page = 1;
@@ -57,17 +57,19 @@ if (existing) {
     password,
     email_confirm: true,
     user_metadata: { ...(existing.user_metadata || {}), ...userMeta },
+    app_metadata: { ...(existing.app_metadata || {}), role: 'admin' },
   });
   if (error) { console.error('✗ updateUser:', error.message); process.exit(3); }
   console.log(`✓ Обновлён существующий пользователь ${email}`);
   console.log(`  id:   ${existing.id}`);
-  console.log(`  роль: admin (в user_metadata)`);
+  console.log(`  роль: admin (в app_metadata)`);
 } else {
   const { data, error } = await supabase.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
     user_metadata: userMeta,
+    app_metadata: { role: 'admin' },
   });
   if (error) { console.error('✗ createUser:', error.message); process.exit(4); }
   console.log(`✓ Создан новый администратор ${email}`);
